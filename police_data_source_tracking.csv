@@ -15,9 +15,9 @@ New York Police Department,New York,https://data.cityofnewyork.us/browse?Dataset
 Stanford Open Policing Project,Various,https://openpolicing.stanford.edu/data/,12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,
 New Jersey Office of the Attorney General,New Jersey,"https://www.njoag.gov/force/#policy, https://www.njoag.gov/trafficstops/",12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,X,,,,X,,,,,,
 Austin Police Department,Texas,https://data.austintexas.gov/browse?category=Public+Safety,12/29/2021,sowdm,,,,,,,,,,Added,Added,Added,,,Added,Added,Added,Added,Added,Added,Added,,,Added,,Added,,,Use of force data is labeled response to resistance or R2R
-Bloomington Police Department,Indiana,https://data.bloomington.in.gov/group/public-safety,12/29/2021,sowdm,,,Added,Issue #67,,,Added,,Added,,,,,,,,,Quarterly Release,,,,,Issue #48 and QuarterlyRelease,,,,,Added,
+Bloomington Police Department,Indiana,https://data.bloomington.in.gov/group/public-safety,12/29/2021,sowdm,,,Added,Issue #67,,,Issue #48,,Added,,,,,,,,,Quarterly Release,,,,,Issue #48 and QuarterlyRelease,,,,,Added,
 Chandler Police Department,Arizona,https://data.chandlerpd.com/,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Chapel Hill Police Department,North Carolina,https://opendata-townofchapelhill.hub.arcgis.com/search?tags=community%20safety%2Cjustice,12/29/2021,sowdm,,,,,,,Added,,,,,,,,,,,,,,,,,,,,,,
 Richmond Police Department,Virginia,data.richmondgov.com,2/6/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Asheville Police Department,North Carolina,https://data-avl.opendata.arcgis.com/search?tags=publicsafety,2/6/2021,sowdm,,,Added,Added,,,,,,,,,,,,,,Added,,,,Added,Issue #72,,,,,,
+Asheville Police Department,North Carolina,https://data-avl.opendata.arcgis.com/search?tags=publicsafety,2/6/2021,sowdm,,,Added,Issue #74,,,,,,,,,,,,,,Issue #74,,,,Issue #74,Issue #72,,,,,,
 Denver Police Department,Colorado,https://www.denvergov.org/opendata/dataset/city-and-county-of-denver-police-pedestrian-stops-and-vehicle-stops,2/6/2021,sowdm,,,,,,,,,,,,,Added,,,,,,,,,,,,,,,,
