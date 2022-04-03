@@ -41,7 +41,7 @@ The below sections describe, in order, the steps for finding a new dataset, addi
 
 ### Finding Untracked Police Departments and Their Data
 To find untracked police departments, you first need to know what is being tracked. Check out the [police data tracking spreadsheet](https://github.com/openpolicedata/opd-data/blob/main/police_data_source_tracking.csv). It tracks:
-* Datasets already added. Scroll horizontally to find data columns with the value marked `Added`.
+* Datasets already added (Scroll horizontally to find data columns with the value marked `Added`)
 * Datasets recommended for inclusion but that have yet to be added (Marked with an `X`)
 * Datasets requiring code updates to add (Marked by issue #'s referencing [OpenPoliceData data issues](https://github.com/openpolicedata/openpolicedata/issues?q=is%3Aopen+is%3Aissue+label%3Adata+))
 * Datasets recommended for inclusion but who have reliability or other issues with the download URL or website (Marked `URL Issue`)
@@ -162,10 +162,10 @@ Here are some guidelines for identifying datasets to add to the OpenPoliceData p
 * We are mainly looking for incident-level data. This means that the dataset is not a summary and is a table that has a row for every police action of a particular type. For example, a summarized dataset might be the number of traffic stops in 2019 for different groups (races, ethnicities, ages, etc.). Incident-level data for traffic stops would be a table with a row for each traffic stop that contains details about that specific stop.
 * The one current exception to the above incident-level rule is police employee data (i.e. officer demographics). This data can be included in OpenPoliceData.
 * Crime data should not be included
-* Data in OpenPoliceData should be anonymized. That means that data that contains community member's personal information (such as names or addresses) should not be included. We believe that it is a privacy issue if police departments are sharing personal information online and do not want to spread it further.
+* Data in OpenPoliceData should be anonymized. That means that data that contains community member's personal information (such as names or home addresses) should not be included. We believe that it is a privacy issue if police departments are sharing personal information online and do not want to spread it further.
     * Arrests data should not be included. This data has been found to be particularly likely to have personal information, and therefore, we believe it is safest to exclude it.
-    * Addresses in traffic stop data data are okay if they refer to the location of the incident and not a community member's address.
-    * Currently, we include Calls for Service (i.e. information about 911 calls), but please carefully check that it does not contain personal info. It sometimes does, and we may exclude this category entirely in the future if it's found to too frequently contain such info.
+    * Addresses in traffic and pedestrian stop data data are okay if they refer to the location of the incident and not a community member's address.
+    * Currently, we include Calls for Service (i.e. information about 911 calls), but please carefully check that it does not contain personal info. It sometimes does, and we may exclude this category entirely in the future if it's found to too frequently contain such info. 
 * The data needs to be in a format that can be accessed and extracted easily. For example, PDFs are complicated difficult to parse. Data listed in HTML pages are difficult to extract accurately. Most other formats are likely to be fine although some formats may need to have code added to OpenPoliceData to allow them to be imported.
 
 ## What if I find a dataset in OpenPoliceData that should not be included?
