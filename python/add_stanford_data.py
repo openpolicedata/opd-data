@@ -8,6 +8,9 @@ and therefore, have more up-to-date data.
 
 import pandas as pd
 import requests
+from datetime import datetime
+
+plot_flag = False
 
 _us_state_abbrev = {
     'AL' : 'Alabama', 
@@ -125,6 +128,19 @@ def includes_pedestrian_stops(r, start, end):
 
     return '<sup>2</sup>' in r.text[open_loc:close_loc]
 
+def find_time_range(r, start, end):
+    open_loc = find_next(r, '<td class="text-right" data-title="Time range">', start)
+    if open_loc >= end:
+        raise ValueError("Unable to find time range")
+
+    close_loc = find_next(r, '</span></td>', open_loc)
+    if close_loc >= end:
+        raise ValueError("Unable to find time range end")
+
+    date_str = r.text[close_loc-10:close_loc]
+    return datetime.strptime(date_str, "%Y-%m-%d")
+
+
 opd_csv = "opd_source_table.csv"
 df = pd.read_csv(opd_csv)
 stanford_desc = "Standardized stop data from the Stanford Open Policing Project"
@@ -146,16 +162,22 @@ row_types = df["TableType"].to_list()
 st_loc, state = find_next_state(r, -1)
 next_st_loc, next_state = find_next_state(r, st_loc)
 pd_loc, pd_name, is_multi = find_next_pd(r, -1)
+num_datasets = 0
+end_dates = []
 while pd_loc >= 0 and pd_loc != len(r.text):
     next_pd_loc, next_pd_name, next_is_multi = find_next_pd(r, pd_loc+1)
     if next_pd_loc < 0:
         next_pd_loc = len(r.text)
+
+    num_datasets += 1
     csv_file = find_next_csv(r, pd_loc, next_pd_loc)
 
     if includes_pedestrian_stops(r, pd_loc, next_pd_loc):
         table_type = "STOPS"
     else:
         table_type = "TRAFFIC STOPS"
+
+    end_dates.append(find_time_range(r, pd_loc, next_pd_loc))
 
     already_added = False
     for k in range(len(row_states)):
@@ -186,5 +208,13 @@ while pd_loc >= 0 and pd_loc != len(r.text):
         st_loc = next_st_loc
         state = next_state
         next_st_loc, next_state = find_next_state(r, st_loc)
+
+if plot_flag:
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    fig, ax = plt.subplots()
+    s = pd.Series(end_dates)
+    s.hist(ax=ax)
+    plt.show()
 
 df.to_csv(opd_csv,index=False)
