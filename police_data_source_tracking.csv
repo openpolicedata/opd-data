@@ -11,7 +11,7 @@ California Department of Justice,California,https://openjustice.doj.ca.gov/data,
 Baltimore Police Department,Maryland,data.baltimorecity.gov / https://www.projectcomport.org/,12/29/2021,sowdm,,,,URL Issue,,,,,URL Issue,,,,,,,,,,,,,,URL Issue,,,,,,Had issues with errors when downloading Project Comport CSVs
 Indianapolis Metropolitan Police Department,Indiana,https://www.projectcomport.org/,12/29/2021,sowdm,,,,URL Issue,,,,,URL Issue,,,,,,,,,,,,,,URL Issue,,,,,,Had issues with errors when downloading Project Comport CSVs
 Wichita Police Department,Kansas,https://ict-opendata-cityofwichita.hub.arcgis.com/search?tags=safety / https://www.projectcomport.org/,12/29/2021,sowdm,,,,URL Issue,,,,,,,,,,,,,,,,,,,URL Issue,,,,,, Had issues with errors when downloading Project Comport CSVs
-New York Police Department,New York,https://data.cityofnewyork.us/browse?Dataset-Information_Agency=Police+Department+%28NYPD%29,12/29/2021,sowdm,,,Added,,,,Added,,,,,,,Issue #48,,,,,,,,,,Added,,Added,Added,,
+New York Police Department,New York,https://data.cityofnewyork.us/browse?Dataset-Information_Agency=Police+Department+%28NYPD%29,12/29/2021,sowdm,,,Issue #75,,,,Added,,,,,,,Issue #48,,,,,,,,,,Added,,Added,Added,,
 Stanford Open Policing Project,Various,https://openpolicing.stanford.edu/data/,12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,
 New Jersey Office of the Attorney General,New Jersey,"https://www.njoag.gov/force/#policy, https://www.njoag.gov/trafficstops/",12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,X,,,,X,,,,,,
 Austin Police Department,Texas,https://data.austintexas.gov/browse?category=Public+Safety,12/29/2021,sowdm,,,,,,,,,,Added,Added,Added,,,Added,Added,Added,Added,Added,Added,Added,,,Added,,Added,,,Use of force data is labeled response to resistance or R2R
@@ -20,4 +20,4 @@ Chandler Police Department,Arizona,https://data.chandlerpd.com/,12/29/2021,sowdm
 Chapel Hill Police Department,North Carolina,https://opendata-townofchapelhill.hub.arcgis.com/search?tags=community%20safety%2Cjustice,12/29/2021,sowdm,,,,,,,Added,,,,,,,,,,,,,,,,,,,,,,
 Richmond Police Department,Virginia,data.richmondgov.com,2/6/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Asheville Police Department,North Carolina,https://data-avl.opendata.arcgis.com/search?tags=publicsafety,2/6/2021,sowdm,,,Added,Issue #74,,,,,,,,,,,,,,Issue #74,,,,Issue #74,Issue #72,,,,,,
-Denver Police Department,Colorado,https://www.denvergov.org/opendata/dataset/city-and-county-of-denver-police-pedestrian-stops-and-vehicle-stops,2/6/2021,sowdm,,,,,,,,,,,,,Added,,,,,,,,,,,,,,,,
+Denver Police Department,Colorado,https://www.denvergov.org/opendata/dataset/city-and-county-of-denver-police-pedestrian-stops-and-vehicle-stops,2/6/2021,sowdm,,,,,,,,,X,,,,Added,,,,,,,,,,,,,,,,
