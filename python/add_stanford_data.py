@@ -188,14 +188,16 @@ while pd_loc >= 0 and pd_loc != len(r.text):
     if not already_added:
         date_field = "date"
         if is_multi:
+            source_name = state
             jurisdiction = "MULTI"
             jurisdiction_field = "department_name"
         else:
+            source_name = pd_name
             jurisdiction = pd_name
             jurisdiction_field = ""
 
         df_append = pd.DataFrame(
-            [[state,pd_name,jurisdiction,table_type,"MULTI",stanford_desc,"CSV",csv_file,date_field,"",jurisdiction_field]],
+            [[state,source_name,jurisdiction,table_type,"MULTI",stanford_desc,"CSV",csv_file,date_field,"",jurisdiction_field]],
             columns=df.columns)
 
         df = pd.concat([df, df_append])

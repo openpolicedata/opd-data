@@ -130,7 +130,7 @@ Adding data to the OpenPoliceData package in most cases will be as easy as addin
 
 Add a row with the following information:
 * State
-* Source Name: In most cases, this is the name of the police department (i.e. Denver for the Denver Police Department). For some cases (typically state-level data), this should be the name of who owns the data (i.e. California Department of Justice).
+* Source Name: In most cases, this is the name of the police department (i.e. Denver for the Denver Police Department). For state-level data, this should be the name of state.
 * Jurisdiction: In most cases, this is the same as the Source Name (i.e. the police department name). However, if the source includes multiple police departments such as a dataset that contains information on all stops across the state, this should be `MULTI`.
 * TableType: This defines the type of data (i.e. `TRAFFIC STOPS`, `USE OF FORCE`, etc.) This should match one of the table types in the TableTypes enum defined [here](https://github.com/openpolicedata/openpolicedata/blob/main/openpolicedata/_datasets.py) (HINT: search for "class TableTypes"). Use the string values to the right of the equal sign.
 * Year: If the dataset contains data for a single year (usually indicated in the title of the dataset on the website), enter the year. If the data contains multiple years, enter `MULTI`. If the data does not correspond to a specific date (typically employee demographics data), enter `None`
