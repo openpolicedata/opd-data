@@ -178,3 +178,15 @@ North Carolina,Asheville,Asheville,CALLS FOR SERVICE,2018,"APD CAD 911 Calls. Ad
 North Carolina,Asheville,Asheville,CALLS FOR SERVICE,2019,"APD CAD 911 Calls. Addresses are delivered in block format, resolving to the nearest 100 (e.g. 1-199 becomes 100-BLK; 200-299 becomes 200-BLK; etc.). ",ArcGIS,https://services.arcgis.com/aJ16ENn1AaqdFlqx/arcgis/rest/services/APD_CAD_911_Calls_2019/FeatureServer/0,Call_Time ,,
 North Carolina,Asheville,Asheville,CALLS FOR SERVICE,2020,"APD CAD 911 Calls. Addresses are delivered in block format, resolving to the nearest 100 (e.g. 1-199 becomes 100-BLK; 200-299 becomes 200-BLK; etc.). ",ArcGIS,https://services.arcgis.com/aJ16ENn1AaqdFlqx/arcgis/rest/services/APD_CAD_911_Calls_2020/FeatureServer/0,call_time ,,
 North Carolina,Asheville,Asheville,CALLS FOR SERVICE,2021,"APD CAD 911 Calls. Addresses are delivered in block format, resolving to the nearest 100 (e.g. 1-199 becomes 100-BLK; 200-299 becomes 200-BLK; etc.). ",ArcGIS,https://services.arcgis.com/aJ16ENn1AaqdFlqx/arcgis/rest/services/APD_CAD_911_Calls_2021/FeatureServer/0,call_time ,,
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2009,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,m3fh-4zv4,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2010,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,x8x7-g8dg,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2011,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,9qfp-48xj,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2012,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,yugt-4yp9,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2013,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,xz8t-a4ug,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2014,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,vv5d-7trv,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2015,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,j2rb-g65t,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2016,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,weuz-d4x6,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2017,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,q8ec-3etm,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2018,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,ui6b-hyzq,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2019,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,u3ag-s7w6,stationname
+New Jersey,New Jersey,MULTI,TRAFFIC STOPS,2020,NJSP traffic stops from OLEPS Traffic Stop Data Dashboard,Socrata,data.nj.gov,year,kie7-5sud,stationname
