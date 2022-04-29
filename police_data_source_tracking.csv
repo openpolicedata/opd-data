@@ -13,7 +13,7 @@ Indianapolis Metropolitan Police Department,Indiana,https://www.projectcomport.o
 Wichita Police Department,Kansas,https://ict-opendata-cityofwichita.hub.arcgis.com/search?tags=safety / https://www.projectcomport.org/,12/29/2021,sowdm,,,,URL Issue,,,,,,,,,,,,,,,,,,,URL Issue,,,,,, Had issues with errors when downloading Project Comport CSVs
 New York Police Department,New York,https://data.cityofnewyork.us/browse?Dataset-Information_Agency=Police+Department+%28NYPD%29,12/29/2021,sowdm,,,Issue #75,,,,Added,,,,,,,Issue #48,,,,,,,,,,Added,,Added,Added,,
 Stanford Open Policing Project,Various,https://openpolicing.stanford.edu/data/,12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,
-New Jersey Office of the Attorney General,New Jersey,"https://www.njoag.gov/force/#policy, https://www.njoag.gov/trafficstops/",12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,Added,,,,X,,,,,,
+New Jersey Office of the Attorney General,New Jersey,"https://www.njoag.gov/force/#policy, https://www.njoag.gov/trafficstops/",12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,Added,,,,Issue #80,,,,,,
 Austin Police Department,Texas,https://data.austintexas.gov/browse?category=Public+Safety,12/29/2021,sowdm,,,,,,,,,,Added,Added,Added,,,Added,Added,Added,Added,Added,Added,Added,,,Added,,Added,,,Use of force data is labeled response to resistance or R2R
 Bloomington Police Department,Indiana,https://data.bloomington.in.gov/group/public-safety,12/29/2021,sowdm,,,Added,Issue #67,,,Issue #48,,Added,,,,,,,,,Quarterly Release,,,,,Issue #48 and QuarterlyRelease,,,,,Added,
 Chandler Police Department,Arizona,https://data.chandlerpd.com/,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,
