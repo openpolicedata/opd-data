@@ -59,8 +59,6 @@ The [police data tracking spreadsheet](https://github.com/openpolicedata/opd-dat
 #### `Which Departments/Sources to Check`
 Next, you'll need to search the internet for data. First of all, where police departments and other sources share their open data can vary so if you're looking for open data for a specific department, be prepared to search a bit. That being said, there are some general guidelines for finding data in most cases.
 
-The [Police Data Initiative](https://www.policedatainitiative.org/datasets) is a good place to start. As of the time of writing this document, not all department in this list have been checked for data.
-
 The [Stanford Open Policing Project](https://openpolicing.stanford.edu/data/) is another place to check. The data available at this site is available through OpenPoliceData. However, many of these datasets have not been updated recently. Where it exists, we would like to replace the data that we are currently getting from Stanford with data that is made available by the departments themselves as these datasets may be more up-to-date.
 
 Some states have laws that require all departments in the state to collect data and report it to the state for public release. Where these laws exist, the state-level sources are often the best sources since they include data for all departments in the state.
