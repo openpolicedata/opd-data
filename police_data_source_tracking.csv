@@ -9,7 +9,7 @@ Charlottesville Police Department,Virginia,,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,
 Burlington Police Department,Vermont,data.burlingtonvt.gov,12/29/2021,sowdm,,,Issue #49,Issue #49,,,,,,,,,,,,,,,,,Issue #49,,,,Issue #49,,,,,,
 California Department of Justice,California,https://openjustice.doj.ca.gov/data,12/29/2021,sowdm,,,,,,,Issue #48,,,,,,,,Added,,,,,,,,,,,Added,Added,,,,
 Baltimore Police Department,Maryland,data.baltimorecity.gov / https://www.projectcomport.org/,12/29/2021,sowdm,,,,,,URL Issue,,,,,URL Issue,,,,,,,,,,,,,,URL Issue,,,,,,Had issues with errors when downloading Project Comport CSVs
-Indianapolis Metropolitan Police Department,Indiana,https://www.projectcomport.org/,12/29/2021,sowdm,,,,,,URL Issue,,,,,URL Issue,,,,,,,,,,,,,,URL Issue,,,,,,Had issues with errors when downloading Project Comport CSVs
+Indianapolis Metropolitan Police Department,Indiana,https://data.indy.gov/search?q=police,12/29/2021,sowdm,,,,,,Added,,,,,Added,,,,,,,,,,,,,,Added,,,,,,
 Wichita Police Department,Kansas,https://ict-opendata-cityofwichita.hub.arcgis.com/search?tags=safety / https://www.projectcomport.org/,12/29/2021,sowdm,,,,,,URL Issue,,,,,,,,,,,,,,,,,,,URL Issue,,,,,, Had issues with errors when downloading Project Comport CSVs
 New York Police Department,New York,https://data.cityofnewyork.us/browse?Dataset-Information_Agency=Police+Department+%28NYPD%29,12/29/2021,sowdm,,,,Issue #75,,,,,Added,,,,,,,Issue #48,,,,,,,,,,Added,,Added,Added,,
 Stanford Open Policing Project,Various,https://openpolicing.stanford.edu/data/,12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,
@@ -47,7 +47,7 @@ New Orleans,Louisiana,https://data.nola.gov/browse?category=Public+Safety+and+Pr
 Orlando,Florida,https://data.cityoforlando.net/browse?category=Orlando+Police&limitTo=datasets,4/25/2022,sowdm,,,,,,,,,,,Added,,,,,,,,,,,,,,,,,,,,
 Portland,Oregon,https://www.portland.gov/police/open-data,4/25/2022,sowdm,,,,Issue #48,,,,,,,Added,,,,,,,,,,,,,,Added,,,,,,
 Portland,Maine,None,4/25/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Sacramento,California,https://data.cityofsacramento.org/search?tags=Public%20Safety,4/25/2022,sowdm,,,,X,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Sacramento,California,https://data.cityofsacramento.org/search?collection=Dataset&tags=police,4/25/2022,sowdm,,,,X,X,,,,,,,,,,,,,,,,,,,,,,,,,,
 Seattle,Washington,https://data.seattle.gov/browse?category=Public+Safety&limitTo=datasets,4/25/2022,sowdm,,,,Added,,,,,,,Added,,,,,Added,,,,,,,,,Added,,,,,,
 Vallejo,California,https://vallejo-open-data-covit.hub.arcgis.com/search?tags=safety%2Cpd,4/25/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Wallkill,New York,https://wallkillpd.org/document-center/data.html,4/25/2022,sowdm,,,,,,,,,Issue #48 and #78,,,,,,Issue #48 and #78,,,,,,,,,,,,,,,,
@@ -144,3 +144,4 @@ Augusta,Maine,,5/25/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Maryland,Maryland,https://opendata.maryland.gov/browse?category=public+safety&limitTo=datasets,5/26/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Annapolis,Maryland,,5/26/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Massachusetts,Massachusetts,,5/26/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+San Diego County Sheriff,California,https://www.sdsheriff.gov/resources/open-data,6/23/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
