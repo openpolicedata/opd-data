@@ -8,9 +8,9 @@ Charlotte-Mecklenburg Police Department,North Carolina,data.charlottenc.gov,12/2
 Charlottesville Police Department,Virginia,,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Burlington Police Department,Vermont,data.burlingtonvt.gov,12/29/2021,sowdm,,,Issue #49,Issue #49,,,,,,,,,,,,,,,,,Issue #49,,,,Issue #49,,,,,,
 California Department of Justice,California,https://openjustice.doj.ca.gov/data,12/29/2021,sowdm,,,,,,,Issue #48,,,,,,,,Added,,,,,,,,,,,Added,Added,,,,
-Baltimore Police Department,Maryland,data.baltimorecity.gov / https://www.projectcomport.org/,12/29/2021,sowdm,,,,,,URL Issue,,,,,URL Issue,,,,,,,,,,,,,,URL Issue,,,,,,Had issues with errors when downloading Project Comport CSVs
+Baltimore Police Department,Maryland,data.baltimorecity.gov,12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Indianapolis Metropolitan Police Department,Indiana,https://data.indy.gov/search?q=police,12/29/2021,sowdm,,,,,,Added,,,,,Added,,,,,,,,,,,,,,Added,,,,,,
-Wichita Police Department,Kansas,https://ict-opendata-cityofwichita.hub.arcgis.com/search?tags=safety / https://www.projectcomport.org/,12/29/2021,sowdm,,,,,,URL Issue,,,,,,,,,,,,,,,,,,,URL Issue,,,,,, Had issues with errors when downloading Project Comport CSVs
+Wichita Police Department,Kansas,https://ict-opendata-cityofwichita.hub.arcgis.com/search?tags=safety ,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 New York Police Department,New York,https://data.cityofnewyork.us/browse?Dataset-Information_Agency=Police+Department+%28NYPD%29,12/29/2021,sowdm,,,,Issue #75,,,,,Added,,,,,,,Issue #48,,,,,,,,,,Added,,Added,Added,,
 Stanford Open Policing Project,Various,https://openpolicing.stanford.edu/data/,12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,
 New Jersey Office of the Attorney General,New Jersey,"https://www.njoag.gov/force/#policy, https://www.njoag.gov/trafficstops/",12/29/2021,sowdm,,,,,,,,,,,,,,,,,,,,,Added,,,,Issue #80,,,,,,
