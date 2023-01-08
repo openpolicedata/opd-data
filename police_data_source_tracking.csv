@@ -1,7 +1,7 @@
 Source,State,Open Data Website,Last Checked Date,Last Checked By,NO DATA,Crashes,Crashes - Incidents,Crashes - Civilians,Crashes - Vehicles,Arrests,Bail,Calls for Service,Citations,Complaints,COMPLAINTS – BACKGROUND,COMPLAINTS – OFFICERS,COMPLAINTS – ALLEGATIONS,COMPLAINTS – PENALTIES,Death in Custody,Diversion Program,Employee Demographics,Field Contacts,Incidents,Officer-Involved Shootings,Officer-Involved Shootings - Incidents,Officer-Involved Shootings - Civilians,Officer-Involved Shootings - Officers,Stops,Pedestrian Stops,Pedestrian Citations,Pedestrian Warnings,Pedestrian Arrests,Traffic Citations,Traffic Stops,Traffic Arrests,Traffic Warnings,Show of Force,Use of Force,Use of Force - Incidents,Use of Force  - Civilians/Officers,Use of Force  - Civilians,Use of Force  - Officers,Vehicle Pursuits,Comments
 Fairfax County Police Department,Virginia,https://policedata-fcpdgis.hub.arcgis.com/pages/crime-stats,12/23/2021,sowdm,,,,,,X,,,,,,,,,,,,,,,,,,,,,,,Added,,,Added,,,,,,,,
 Virginia,Virginia,https://data.virginia.gov/Public-Safety/Community-Policing-Data-July-1-2020-to-September-3/segb-5y2c,12/23/2021,sowdm,,,,,,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,,,,,,,
-Montgomery County Police Department,Maryland,data.montgomerycountymd.gov,12/23/2021,sowdm,,,,,,,,,,Added,,,,,,,,,,,,,,,,,,,,Added,,,,,,,,,,
+Montgomery County Police Department,Maryland,data.montgomerycountymd.gov,1/7/2023,sowdm,,,X,X,,,,,,Added,,,,,,,,,X,,,,,,,,,,,Added,,,,,,,,,,
 Prince William County Police Department,Virginia,,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Anne Arundel County Police Department,Maryland,,12/29/2021,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Charlotte-Mecklenburg Police Department,North Carolina,data.charlottenc.gov,12/29/2021,sowdm,,,,,,,,,,,,,,,,,Added,,,,Added,Added,Added,,,,,,,Added,,,,,,,,,,
@@ -52,7 +52,7 @@ Seattle,Washington,https://data.seattle.gov/browse?category=Public+Safety&limitT
 Vallejo,California,https://vallejo-open-data-covit.hub.arcgis.com/search?tags=safety%2Cpd,4/25/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Wallkill,New York,https://wallkillpd.org/document-center/data.html,4/25/2022,sowdm,,,,,,,,,,,,,,,,,Issue #48 and #78,,,,,,,Issue #48 and #78,,,,,,,,,,,,,,,,
 North Bergen,New Jersey,,4/25/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Philadelphia,Pennsylvania,https://www.opendataphilly.org/group/ab08872a-b3a5-4362-a167-74b0acb6ccc1?groups=public-safety-group,4/25/2022,sowdm,,Added,,,,,,,,Issue #79,,,,,,,,,Issue #79,,,,,Issue #79,,,,,,,,,,,,,,,,
+Philadelphia,Pennsylvania,https://www.opendataphilly.org/group/ab08872a-b3a5-4362-a167-74b0acb6ccc1?groups=public-safety-group,1/7/2023,sowdm,,Added,,,,,,,,,Added,,,Added,,,,,Added,Added,,,,Added,,,,,,,,,,,,,,,,
 South Bend,Indiana,https://data-southbend.opendata.arcgis.com/search?groupIds=8f846cd64e2c40dc8839ec1b81e67f95,4/25/2022,sowdm,,,,,,,,,,Issue #78,,,,,,,,,,,,,,,,,,,,,,,,Added,,,,,,
 Tacoma,Washington,https://geohub.cityoftacoma.org/,4/25/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Beloit,Wisconsin,http://gouda.beloitwi.gov/WebLink/Browse.aspx?startid=67660&dbid=0,4/25/2022,sowdm,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Added,,,,,,
