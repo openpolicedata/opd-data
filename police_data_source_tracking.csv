@@ -29,7 +29,7 @@ Connecticut,Connecticut,https://data.ct.gov/browse?category=Public+Safety,3/31/2
 Lincoln,Nebraska,https://opendata.lincoln.ne.gov/search?tags=safety,3/31/2022,sowdm,,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Added,,,,Added,,,,,Added,Use of force data is labeled use of control
 Mesa,Arizona,https://data.mesaaz.gov/browse?category=Public+Safety,1/3/2023,sowdm,,,,,,,,https://data.mesaaz.gov/Police/Police-Computer-Aided-Dispatch-Events/ex94-c5ad,,,,,,,,,,,,X,,,,,,,,,,,,,,,,,,,,,
 Newport News,Virginia,https://www.nnva.gov/2229/Open-Data,3/31/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Northhampton,Massachusetts,https://northamptonpd.com/open-data-portal.html,12/13/2022,sowdm,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Added,,,,,Added,
+Northampton,Massachusetts,https://northamptonpd.com/open-data-portal.html,12/13/2022,sowdm,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Added,,,,,Added,
 Palo Alto,California,https://data.cityofpaloalto.org/home,3/31/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 San Diego,California,https://data.sandiego.gov/datasets/?department=police,1/13/2023,sowdm,,,Added,Added,,,,Added,,Added,,,,,,,,,,,,,,,"Issue #131, Issue #143",,,,,,,,,,,,,,,,
 Springfield,Missouri,https://www.springfieldmo.gov/856/Police-Data,3/31/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -171,7 +171,7 @@ Long Beach,California,https://data.longbeach.gov/explore/?q=police&sort=modified
 Oakland,California,"https://data.oaklandca.gov/browse?limitTo=datasets&q=police&sortBy=relevance, https://www.oaklandca.gov/topics/police-data",8/16/2022,sowdm,,,,,,,,Issue #78,,,,,,,,,,,,,,,,,Issue #78,,,,,,,,,,Added,,,,,,
 San Bernadino County,California,https://open.sbcounty.gov/search?q=police,8/16/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 San Bernadino ,California,,8/16/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-San Jose,California,https://data.sanjoseca.gov/dataset?q=police,8/16/2022,sowdm,,,,,,,,Added,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+San Jose,California,https://data.sanjoseca.gov/dataset?q=police,8/16/2022,sowdm,,Arcgis API responds slowly or hangs,,,,,,Added,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Santa Ana,California,https://gis-santa-ana.opendata.arcgis.com/search?q=police,8/16/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Stockton,California,https://data.stocktonca.gov/browse?limitTo=datasets&q=police&sortBy=relevance,8/16/2022,sowdm,X,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Saint Petersburg,Florida,https://stat.stpete.org/browse?limitTo=datasets&q=police&sortBy=relevance,8/16/2022,sowdm,,,,,,,,Added,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
