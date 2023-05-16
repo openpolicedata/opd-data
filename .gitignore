@@ -1,3 +1,5 @@
 *.zip
 data/
 .~lock*
+*.pyc
+.vscode/launch.json
