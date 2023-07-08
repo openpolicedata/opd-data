@@ -27,10 +27,15 @@ def compare_tables():
 def add_dates():
     import stanford
 
-    skip = [("Seattle", "CALLS FOR SERVICE"),("Seattle", "COMPLAINTS")]
+    kstart = 0
+
+    skip = []
+    run = None
 
     src_file = r"C:\Users\matth\repos\opd-data\opd_source_table.csv"
     df = pd.read_csv(src_file)
+    if src_file is not None:
+        opd.datasets.datasets =opd. datasets._build(src_file)
     df_stanford = stanford.get_stanford()
 
     downloadable_file = "Downloadable File"
@@ -53,29 +58,32 @@ def add_dates():
     df = df.sort_values(by=cols)
 
     min_year = 1990
-    run_all = False
     for k in df.index:
-        cur_row = df.loc[k]
-        if not run_all and pd.notnull(cur_row["coverage_start"]):
+        if k<kstart:
             continue
+        cur_row = df.loc[k]
+
         if (cur_row["SourceName"], cur_row["TableType"]) in skip:
             continue
+        if run is not None and (cur_row["SourceName"], cur_row["TableType"]) not in run:
+            continue
+
         print("{}: {} {} for year {}".format(k, cur_row["SourceName"], cur_row["TableType"], cur_row["Year"]))
 
         if "stanford.edu" in df.loc[k,"URL"]:
             match = (df_stanford["state"]==cur_row["State"]) & (df_stanford["source"]==cur_row["SourceName"]) & (df_stanford["agency"]==cur_row["Agency"])
             if match.sum()!=1:
                 raise ValueError("Unable to find the correct # of Stanford matches")
-            df.loc[k, "coverage_start"] = df_stanford[match]["start_date"].iloc[0].strftime('%m/%d/%Y')
-            df.loc[k, "coverage_end"] = df_stanford[match]["end_date"].iloc[0].strftime('%m/%d/%Y')
+            coverage_start = df_stanford[match]["start_date"].iloc[0].strftime('%m/%d/%Y')
+            coverage_end = df_stanford[match]["end_date"].iloc[0].strftime('%m/%d/%Y')
 
         else:
             src = opd.Source(cur_row["SourceName"], cur_row["State"])
 
             if cur_row["Year"] == opd.defs.NA:
-                df.loc[k,"coverage_start"] = "N/A"
-                df.loc[k,"coverage_end"] = "N/A"
-            elif cur_row["Year"] == opd.defs.MULTI:
+                coverage_start = "N/A"
+                coverage_end = "N/A"
+            elif cur_row["Year"] == "MULTI":
                 # Manually get years since get years gets years for all datasets
                 loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], dataset_id=cur_row["dataset_id"],
                                         date_field=cur_row["date_field"], agency_field=cur_row["agency_field"])
@@ -91,15 +99,22 @@ def add_dates():
                 
                 if pd.notnull(cur_row["date_field"]):
                     min_val = table.table[cur_row["date_field"]].min()
-                    if not isinstance(min_val, str):
-                        min_val = min_val.strftime('%m/%d/%Y')
-                    df.loc[k,"coverage_start"] = min_val
+                    if "year" in cur_row["date_field"].lower() and "month" not in cur_row["date_field"].lower():
+                        coverage_start = "1/1/{}".format(min_val.year)
+                    else:
+                        if not isinstance(min_val, str):
+                            min_val = min_val.strftime('%m/%d/%Y')
+                        coverage_start = min_val
 
                     table = src.load_from_url(years[-1], table_type=cur_row["TableType"])
-                    max_val = table.table[cur_row["date_field"]].max()
-                    if not isinstance(max_val, str):
-                        max_val = max_val.strftime('%m/%d/%Y')
-                    df.loc[k,"coverage_end"] = max_val
+                    col = table.table[cur_row["date_field"]][table.table[cur_row["date_field"]].apply(lambda x: not isinstance(x,str))]
+                    max_val = col.max()
+                    if "year" in cur_row["date_field"].lower() and "month" not in cur_row["date_field"].lower():
+                        coverage_end = "12/31/{}".format(max_val.year)
+                    else:
+                        if not isinstance(max_val, str):
+                            max_val = max_val.strftime('%m/%d/%Y')
+                        coverage_end = max_val
                 else:
                     # Attempt to find date column
                     dt_col = [x for x in table.table.columns if "date" in x.lower()]
@@ -115,16 +130,35 @@ def add_dates():
                             min_val = table.table[dt_col].min()
                             if not isinstance(min_val, str):
                                 min_val = min_val.strftime('%m/%d/%Y')
-                            df.loc[k,"coverage_start"] = min_val
+                            coverage_start = min_val
 
                             table = src.load_from_url(years[-1], table_type=cur_row["TableType"])
                             max_val = table.table[dt_col].max()
                             if not isinstance(max_val, str):
                                 max_val = max_val.strftime('%m/%d/%Y')
-                            df.loc[k,"coverage_end"] = max_val
+                            coverage_end = max_val
             else:
-                df.loc[k,"coverage_start"] = "1/1/{}".format(cur_row["Year"])
-                df.loc[k,"coverage_end"] = "12/31/{}".format(cur_row["Year"])
+                coverage_start = "1/1/{}".format(cur_row["Year"])
+                coverage_end = "12/31/{}".format(cur_row["Year"])
+
+        if pd.isnull(df.loc[k,"coverage_start"]) or \
+            (df.loc[k,"coverage_start"][:-4]=="01/01/" and coverage_start[:-4]=='1/1/'):
+            df.loc[k,"coverage_start"] = coverage_start
+        elif df.loc[k,"coverage_start"] == coverage_start:
+            pass
+        else:
+            throw_error = True
+            if throw_error:
+                raise ValueError("Start")
+
+        if pd.isnull(df.loc[k,"coverage_end"]):
+            df.loc[k,"coverage_end"] = coverage_end
+        elif df.loc[k,"coverage_end"] == coverage_end:
+            pass
+        elif pd.to_datetime(df.loc[k,"coverage_end"]) < pd.to_datetime(coverage_end):
+            df.loc[k,"coverage_end"] = coverage_end
+        else:
+            raise ValueError("Stop")
 
         df.loc[k, "last_coverage_check"] = datetime.now().strftime('%m/%d/%Y')
 
