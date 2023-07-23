@@ -163,5 +163,90 @@ def add_dates():
         df.loc[k, "last_coverage_check"] = datetime.now().strftime('%m/%d/%Y')
 
         df.to_csv(src_file, index=False)
-        
-add_dates()
+
+def count_agencies():
+    from rapidfuzz import fuzz
+    import re
+
+    def clean(x):
+        return p.sub("", x)
+    
+    def add_agency(agency_name, state, agencies):
+        agency = clean(agency_name)
+        reduced_agencies = [x[0] for x in agencies if x[1]==state]
+        cleaned_agencies = [clean(x[0]) for x in reduced_agencies]
+        matches = [x==agency for x in cleaned_agencies]
+        if any(matches):
+            full_names = [x for x,y in zip(reduced_agencies, matches) if y]
+            if len(full_names) != 1:
+                raise NotImplementedError()
+            else:
+                if full_names[0] == agency_name:
+                    pass
+                else:
+                    raise NotImplementedError()
+        else:
+            ratios = [fuzz.ratio(agency, x) for x in cleaned_agencies]
+            if len(ratios)> 0 and max(ratios)>77:
+                high_scoring = [x for x,y in zip(cleaned_agencies, ratios) if y==max(ratios)]
+                raise NotImplementedError()
+            else:
+                agencies.append((agency_name,state))
+
+    src_file = r"C:\Users\matth\repos\opd-data\opd_source_table.csv"
+    if src_file is not None:
+        opd.datasets.datasets =opd. datasets._build(src_file)
+    datasets = opd.datasets.query()
+
+    agencies = []
+    p = re.compile(r"\s(Police|Sheriff).+$", re.IGNORECASE)
+    for k in range(len(datasets)):
+        if datasets['Agency'][k] not in [opd.defs.MULTI, opd.defs.NA]:
+            if (datasets['AgencyFull'][k],datasets['State'][k]) not in agencies:
+                add_agency(datasets['AgencyFull'][k], datasets['State'][k], agencies)
+                # def clean(x):
+                #     return p.sub("", x)
+                
+                # agency = clean(datasets['AgencyFull'][k])
+                # cleaned_agencies = [clean(x[0]) for x in agencies if x[1]==datasets['State'][k]]
+                # matches = [x==agency for x in cleaned_agencies]
+                # if any(matches):
+                #     raise NotImplementedError()
+                # else:
+                #     ratios = [fuzz.ratio(agency, x) for x in cleaned_agencies]
+                #     if len(ratios)> 0 and max(ratios)>77:
+                #         high_scoring = [x for x,y in zip(cleaned_agencies, ratios) if y==max(ratios)]
+                #         raise NotImplementedError()
+                #     else:
+                #         agencies.append((datasets['AgencyFull'][k],datasets['State'][k]))
+
+    for k in range(len(datasets)):
+        if datasets['Agency'][k] == opd.defs.MULTI:
+            src = opd.Source(datasets['SourceName'][k], datasets['State'][k])
+            if datasets['DataType'][k] in ["CSV"]:
+                t = src.load_from_url(datasets['Year'][k], datasets['TableType'][k])
+                new_agencies = t.table[datasets['agency_field'][k]].unique()
+                if datasets['agency_field'][k] == "ORI":
+                    if datasets['Year'][k]<=2020:
+                        data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2022-08/URSUS_ORI-Agency_Names_20210902.xlsx","Agency","ORI_Number",pd.read_excel)
+                    elif datasets['Year'][k]==2021:
+                        data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2022-08/UseofForce_ORI-Agency_Names_2021.csv","AGENCY_NAME","ORI", pd.read_csv)
+                    elif datasets['Year'][k]==2022:
+                        data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_ORI-Agency_Names_2022f.csv","AGENCY_NAME","ORI", pd.read_csv)
+                    ori_df = data[3](data[0])
+                    for j in range(len(new_agencies)):
+                        match = ori_df[data[1]][ori_df[data[2]] == new_agencies[j]]
+                        if len(match)!=1:
+                            raise NotImplementedError()
+                        else:
+                            new_agencies[j] = match.iloc[0]
+            else:
+                new_agencies = src.get_agencies(datasets['TableType'][k])
+            
+            for agency in new_agencies:
+                if pd.isnull(agency) or len(agency)==1:
+                    continue
+                add_agency(agency, datasets['State'][k], agencies)
+    print(f"OPD contains data for {len(agencies)} police agencies")
+
+count_agencies()
