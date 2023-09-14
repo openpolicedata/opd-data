@@ -1,6 +1,14 @@
-import openpolicedata as opd
+try:
+    import openpolicedata as opd
+except:
+    import sys
+    sys.path.append('../openpolicedata')
+    import openpolicedata as opd
 import pandas as pd
 from datetime import datetime
+import urllib
+from io import BytesIO
+import re
 
 def compare_tables():
     old_file = r"C:\Users\matth\repos\opd-data\opd_source_table.csv"
@@ -164,32 +172,166 @@ def add_dates():
 
         df.to_csv(src_file, index=False)
 
+agency_types = ['Police Department',"Sheriffs Department", 'State Prison for Women',"State Prison",
+                "State Hospital", "Probation Department", "Department of Corrections",'Health Care Facility','Medical Facility',
+                'Department of Public Safety','Community Correctional Facility', 'Prison', 
+                'Department of Forestry & Fire Protection','Department of Parks & Recreation','Transit',
+                'Unified School District Police Department','Sheriff','Forest Preserve Police Department',
+                'Park District Police Department','University Police Department','Illinois University Police Department',
+                'Transit Administration Police Department']
+agency_types.sort(key=len, reverse=True)
+agency_types = [x.title() for x in agency_types]
+agency_types = [re.sub(r"s\s",' ',x) for x in agency_types]
+
+p = re.compile(r"\s("+"|".join(agency_types)+r").*$", re.IGNORECASE)
 def count_agencies():
     from rapidfuzz import fuzz
-    import re
+    ca_state_prison = "California State Prison"
 
     def clean(x):
-        return p.sub("", x)
+        return p.sub("", x).strip()
     
-    def add_agency(agency_name, state, agencies):
+    def add_agency(agency_name_orig, state, agencies):
+        agency_name = agency_name_orig.strip().title()\
+                                 .replace("Allegany","Alleghany")\
+                                 .replace(" Co. ", " County ")\
+                                 .replace(" So"," Sheriff's Department").title()
+        agency_name = re.sub('(.+) \\1', '\\1', agency_name)
+        agency_name = re.sub('Probation$','Probation Department',agency_name)
+        agency_name = re.sub(r'\sP(d|olice)$',r' Police Department',agency_name)
+        agency_name = re.sub(r"Sheriff'?[s|S]?(\sOffice?)?$",r"Sheriff's Department",agency_name)
+        agency_name = re.sub(r"P(oli|rin)$",r"Police",agency_name)
+        agency_name = re.sub('Csp Troop [A-Z]','Connecticut State Police',agency_name)
+        agency_name = re.sub(r'\s+',' ',agency_name)
+        agency_name = re.sub(r"('s|s|')\s",' ',agency_name.lower())
+        agency_name = re.sub(r"(\w+)pd",'\\1 Police Department', agency_name.lower())
+        agency_name = re.sub(r"\sco\.?(?=\s|$)",' county',agency_name)
+        agency_name = re.sub(r"^st\.?\s", "saint ", agency_name)
+        agency_name = re.sub(r"dept\.?$", "department", agency_name)
+        agency_name = agency_name.title()
         agency = clean(agency_name)
         reduced_agencies = [x[0] for x in agencies if x[1]==state]
-        cleaned_agencies = [clean(x[0]) for x in reduced_agencies]
-        matches = [x==agency for x in cleaned_agencies]
+        cleaned_agencies = [clean(x) for x in reduced_agencies]
+        cur_type = [x for x in agency_types if x in agency_name]
+        cur_type = cur_type[0] if len(cur_type)>0 else None
+        matches = [x.replace('-',' ')==agency.replace('-',' ') for x in cleaned_agencies]
         if any(matches):
             full_names = [x for x,y in zip(reduced_agencies, matches) if y]
-            if len(full_names) != 1:
-                raise NotImplementedError()
+            match_types = []
+            for y in full_names:
+                full_type = [x for x in agency_types if x in y]
+                match_types.append(full_type[0] if len(full_type)>0 else None)
+            if any([x.replace('-',' ') == agency_name.replace('-',' ') for x in full_names]) or \
+                full_names[0].lower().replace(" ", "").startswith(agency_name.replace(" ", "").lower()):
+                return
+            elif cur_type is not None and all([x is not None and (w.startswith(ca_state_prison) or x!=cur_type) for w,x in zip(full_names,match_types)]):
+                agencies.append((agency_name,state))
+            elif len(full_names) != 1:
+                if agency_name.startswith(ca_state_prison) and \
+                    all([x.startswith(ca_state_prison) and x.split(',')[1] != agency_name.split(',')[1] for x in full_names]):
+                    agencies.append((agency_name,state))
+                elif any(['Departmentuthern' in x for x in full_names]):
+                    return
+                else:
+                    raise NotImplementedError()
             else:
-                if full_names[0] == agency_name:
+                full_type = [x for x in agency_types if x in full_names[0]]
+                if cur_type is not None and len(full_type)>=1 and cur_type!=full_type[0] and \
+                    full_names[0].replace(full_type[0],cur_type) == agency_name:
+                    agencies.append((agency_name,state))
+                elif (full_names[0].startswith(ca_state_prison) and agency_name.startswith(ca_state_prison) and \
+                    full_names[0].split(',')[1] != agency_name.split(',')[1]) or \
+                        full_names[0].startswith(ca_state_prison) + agency_name.startswith(ca_state_prison)==1:
+                    agencies.append((agency_name,state))
+                elif agency_name.split('-')[0].strip() == full_names[0]:
                     pass
+                elif (full_names[0].startswith(agency_name) and cur_type is None):
+                    pass
+                elif agency_name.startswith(full_names[0]) and len(full_type)==0:
+                    k = [k for k,x in enumerate(agencies) if x==(full_names[0],state)][0]
+                    agencies[k] = (agency_name,state)
                 else:
                     raise NotImplementedError()
         else:
-            ratios = [fuzz.ratio(agency, x) for x in cleaned_agencies]
-            if len(ratios)> 0 and max(ratios)>77:
+            def fuzzclean(x):
+                return x.replace("County","").replace("University Of","")
+            ratios = [fuzz.ratio(fuzzclean(agency), fuzzclean(x)) for x in cleaned_agencies]
+            if len(ratios)> 0 and max(ratios)>86:
                 high_scoring = [x for x,y in zip(cleaned_agencies, ratios) if y==max(ratios)]
-                raise NotImplementedError()
+                if high_scoring[0]=="Chico" and agency=="Chino":
+                    return
+                r = [x for x,y in zip(reduced_agencies,cleaned_agencies) if y in high_scoring]
+                match_types = []
+                for y in r:
+                    full_type = [x for x in agency_types if x in y]
+                    match_types.append(full_type[0] if len(full_type)>0 else None)
+                keep = [cur_type is None or x is None or x==cur_type for x in match_types]
+                match_types = [x for x,y in zip(match_types, keep) if y]
+                r = [x for x,y in zip(r, keep) if y]
+                if len(r)==0:
+                    agencies.append((agency_name,state))
+                elif len(r)>0 and cur_type is not None and \
+                    any([y is not None and y==cur_type and fuzz.ratio(agency_name, x)>98 for x,y in zip(r,match_types)]):
+                    return
+                elif len(r)==1:
+                    if agency.replace("Women","Men")==r[0] or\
+                        agency_name.replace("Park","Beach")==r[0] or\
+                        agency.replace("Center","Institution")==r[0] or \
+                        agency_name.replace("County ","")==r[0] or \
+                        ((a:=re.match("Sant?a?\s([A-Z][a-z]+)", agency_name)) and (b:=re.match("Sant?a?\s([A-Z][a-z]+)", r[0])) and a.group(1)!=b.group(1)) or \
+                        (len(agency_name) > len(r[0]) and r[0]==agency_name[-len(r[0]):]):
+                        agencies.append((agency_name,state))
+                    elif (agency_name.startswith('Willisville') and len(r)==1 and r[0].startswith('Williamsville')):
+                        agencies.append((agency_name,state))
+                    elif (agency_name.startswith(r[0]) and len(r[0])>=35) or \
+                        agency_name in ["Towsonu",] or \
+                        " " not in agency_name and r[0].startswith(agency_name+" ") or \
+                        r[0].lower().replace(" ", "").startswith(agency_name.lower()):
+                        return
+                    else:
+                        words1 = agency_name.split()
+                        words2 = r[0].split()
+                        k1 = k2 = 0
+                        while k1<len(words1) and k2<len(words2):
+                            if words1[k1]==words2[k2]:
+                                words1.pop(k1)
+                                words2.pop(k2)
+                            else:
+                                break
+                        k1 = len(words1)-1
+                        k2 = len(words2)-1
+                        while k1>=0 and k2>=0:
+                            if words1[k1]==words2[k2]:
+                                words1.pop(k1)
+                                words2.pop(k2)
+                                k1-=1
+                                k2-=1
+                            else:
+                                break
+                        w1 = " ".join(words1)
+                        w2 = " ".join(words2)
+                        score = fuzz.ratio(w1, w2)
+                        if score==0:
+                            if agency_name.split()==1:
+                                raise NotImplementedError()
+                            else:
+                                agencies.append((agency_name,state))
+                        elif score<90:
+                            agencies.append((agency_name,state))
+                        else:
+                            return
+                elif (cur_type is not None and all([x is not None and (w.startswith(ca_state_prison) or x!=cur_type) for w,x in zip(r,match_types)])) or \
+                    (a:=re.match("Lo\s([A-Z][a-z]+)", agency_name)) and all([(b:=re.match("Lo\s([A-Z][a-z]+)", d)) and a.group(1)!=b.group(1) for d in r]):
+                    agencies.append((agency_name,state))
+                elif agency_name=="Prince George Police Department" or \
+                    " " not in agency_name and r[0].startswith(agency_name+" ") or \
+                    r[0].lower().replace(" ", "").startswith(agency_name.lower()):
+                    # Should be County PD
+                    return
+                else:
+                    raise NotImplementedError()
+                # elif all([("county" in agency_name.lower())+("county" in x.lower())==1 for x in high_scoring]):
+                #     agencies.append((agency_name,state))
             else:
                 agencies.append((agency_name,state))
 
@@ -199,7 +341,6 @@ def count_agencies():
     datasets = opd.datasets.query()
 
     agencies = []
-    p = re.compile(r"\s(Police|Sheriff).+$", re.IGNORECASE)
     for k in range(len(datasets)):
         if datasets['Agency'][k] not in [opd.defs.MULTI, opd.defs.NA]:
             if (datasets['AgencyFull'][k],datasets['State'][k]) not in agencies:
@@ -233,7 +374,19 @@ def count_agencies():
                         data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2022-08/UseofForce_ORI-Agency_Names_2021.csv","AGENCY_NAME","ORI", pd.read_csv)
                     elif datasets['Year'][k]==2022:
                         data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_ORI-Agency_Names_2022f.csv","AGENCY_NAME","ORI", pd.read_csv)
-                    ori_df = data[3](data[0])
+                    else:
+                        raise ValueError("Unknown dataset")
+                    try:
+                        ori_df = data[3](data[0])
+                    except urllib.error.URLError as e:
+                        with opd.data_loaders.get_legacy_session() as session:
+                            r = session.get(data[0])
+                            
+                        r.raise_for_status()
+                        file_like = BytesIO(r.content)
+                        ori_df = data[3](file_like)
+                    except:
+                        raise
                     for j in range(len(new_agencies)):
                         match = ori_df[data[1]][ori_df[data[2]] == new_agencies[j]]
                         if len(match)!=1:
