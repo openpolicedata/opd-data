@@ -2,5 +2,5 @@ State,SourceName,Agency,TableType,Year,Error,Date Outage Started,Last Outage Con
 North Carolina,Fayetteville,Fayetteville,CRASHES,MULTIPLE,Website hangs,12/27/22,12/27/22,,,
 Michigan,Lansing,Lansing,COMPLAINTS,MULTIPLE,Page Not Found,08/13/23,08/26/23,,8/26/2023,"GIS@lansingmi.gov, andy.skelton@lansingmi.gov"
 Michigan,Lansing,Lansing,OFFICER-INVOLVED SHOOTINGS,MULTIPLE,Requests credentials,08/13/23,08/26/23,,8/26/2023,"GIS@lansingmi.gov, andy.skelton@lansingmi.gov"
-California,Corona,Corona,CALLS FOR SERVICE,MULTIPLE,Data has 0 rows,08/26/23,08/26/23,,8/26/2023,https://corstat.coronaca.gov/dataset/CorStat-Police-Response-Statistics/86hv-vkp4
+California,Corona,Corona,CALLS FOR SERVICE,MULTIPLE,Data has 0 rows,08/26/23,08/26/23,,9/24/2023,https://corstat.coronaca.gov/dataset/CorStat-Police-Response-Statistics/86hv-vkp4
 Florida,Fort Lauderdale,Fort Lauderdale,EMPLOYEE,NONE,Data has 0 rows,08/26/23,08/26/23,,,
