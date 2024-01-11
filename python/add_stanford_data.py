@@ -12,6 +12,9 @@ from datetime import datetime
 
 plot_flag = False
 
+new_cases = {'New Jersey Camden':'Camden County Police Department',
+             'Virginia State Patrol':"Virginia State Police"}
+
 _us_state_abbrev = {
     'AL' : 'Alabama', 
     'AK' : 'Alaska',
@@ -137,26 +140,28 @@ def find_time_range(r, start, end):
     if close_loc >= end:
         raise ValueError("Unable to find time range end")
 
-    date_str = r.text[close_loc-10:close_loc]
-    return datetime.strptime(date_str, "%Y-%m-%d")
+    date_start = r.text[close_loc-10-45:close_loc-45]
+    date_stop = r.text[close_loc-10:close_loc]
+    return datetime.strptime(date_start, "%Y-%m-%d"), datetime.strptime(date_stop, "%Y-%m-%d")
 
 
 opd_csv = "opd_source_table.csv"
 df = pd.read_csv(opd_csv)
 stanford_desc = "Standardized stop data from the Stanford Open Policing Project"
+readme = 'https://github.com/stanford-policylab/opp/blob/master/data_readme.md'
+source_url = 'https://openpolicing.stanford.edu/data/'
 
-# Remove any Stanford data prior to adding
-
-print(len(df))
-df = df[df["Description"] != stanford_desc]
-print(len(df))
+not_stanford = ~df["URL"].str.lower().str.contains('stanford.edu')
+df_stanford_old = df[~not_stanford]
+df = df[not_stanford]
 
 url = "https://openpolicing.stanford.edu/data/"
 
 r = requests.get(url)
 
 row_states = df["State"].to_list()
-row_pds = ["Charlotte" if x == "Charlotte-Mecklenburg" else x for x in df["Jurisdiction"].to_list()]
+row_pds = ["Charlotte" if x == "Charlotte-Mecklenburg" else x for x in df["Agency"].to_list()]
+row_pds = [x.replace("St.","Saint") if x.startswith('St.') else x for x in row_pds]
 row_types = df["TableType"].to_list()
 
 st_loc, state = find_next_state(r, -1)
@@ -177,27 +182,45 @@ while pd_loc >= 0 and pd_loc != len(r.text):
     else:
         table_type = "TRAFFIC STOPS"
 
-    end_dates.append(find_time_range(r, pd_loc, next_pd_loc))
+    start_date, stop_date = find_time_range(r, pd_loc, next_pd_loc)
+    end_dates.append(stop_date)
+
+    if is_multi:
+        source_name = state
+        jurisdiction = "MULTI"
+        jurisdiction_field = "department_name"
+    else:
+        source_name = pd_name
+        jurisdiction = pd_name
+        jurisdiction_field = ""
 
     already_added = False
     for k in range(len(row_states)):
-        if pd_name == row_pds[k] and state == row_states[k] and table_type == row_types[k]:
+        if (jurisdiction == row_pds[k] or (jurisdiction=='State Patrol' and row_pds[k]=='State Police')) and \
+            state == row_states[k] and table_type == row_types[k]:
             already_added = True
             break
 
     if not already_added:
         date_field = "date"
-        if is_multi:
-            source_name = state
-            jurisdiction = "MULTI"
-            jurisdiction_field = "department_name"
+
+        matches = (df_stanford_old['Agency']==jurisdiction) & \
+            (df_stanford_old['State']==state)
+        if matches.sum()!=1:
+            if matches.sum()==0 and f"{state} {jurisdiction}" in new_cases.keys():
+                agency_full = new_cases[f"{state} {jurisdiction}"]
+                source_name = "State Police" if source_name=="State Patrol" and "Police" in agency_full else source_name
+            else:
+                raise NotImplementedError()
         else:
-            source_name = pd_name
-            jurisdiction = pd_name
-            jurisdiction_field = ""
+            agency_full = df_stanford_old[matches].iloc[0]['AgencyFull']
 
         df_append = pd.DataFrame(
-            [[state,source_name,jurisdiction,table_type,"MULTI",stanford_desc,"CSV",csv_file,date_field,"",jurisdiction_field]],
+            [[state,source_name,jurisdiction,agency_full,
+              table_type, start_date.strftime(r"%m/%d/%Y"), stop_date.strftime(r"%m/%d/%Y"),
+              datetime.now().strftime(r"%m/%d/%Y"),
+              stanford_desc, source_url, readme, csv_file, 
+              "MULTI","CSV",date_field,"",jurisdiction_field,'','']],
             columns=df.columns)
 
         df = pd.concat([df, df_append])
@@ -218,5 +241,12 @@ if plot_flag:
     s = pd.Series(end_dates)
     s.hist(ax=ax)
     plt.show()
+
+# Reorder columns so columns most useful to user are up front
+start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end","last_coverage_check","Description","source_url","readme","URL"]
+cols = start_cols.copy()
+cols.extend([x for x in df.columns if x not in start_cols])
+
+df = df.sort_values(by=cols)
 
 df.to_csv(opd_csv,index=False)

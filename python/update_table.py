@@ -32,18 +32,18 @@ def compare_tables():
     df = df.sort_values(by=cols)
     df = df.drop_duplicates(subset=cols, keep=False, ignore_index=True)
 
-def add_dates():
+def update_dates():
     import stanford
 
-    kstart = 0
+    kstart = 7
 
     skip = []
     run = None
 
-    src_file = r"C:\Users\matth\repos\opd-data\opd_source_table.csv"
+    src_file = r"opd_source_table.csv"
     df = pd.read_csv(src_file)
     if src_file is not None:
-        opd.datasets.datasets =opd. datasets._build(src_file)
+        opd.datasets.reload(src_file)
     df_stanford = stanford.get_stanford()
 
     downloadable_file = "Downloadable File"
@@ -93,7 +93,8 @@ def add_dates():
                 coverage_end = "N/A"
             elif cur_row["Year"] == "MULTI":
                 # Manually get years since get years gets years for all datasets
-                loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], dataset_id=cur_row["dataset_id"],
+                loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], cur_row['query'], 
+                                        dataset_id=cur_row["dataset_id"],
                                         date_field=cur_row["date_field"], agency_field=cur_row["agency_field"])
                 years = loader.get_years(force=True)
                 years.sort()
@@ -101,21 +102,30 @@ def add_dates():
 
                 nrows = 1 if data_type_to_access_type[cur_row["DataType"]]=="API" else None
 
-                table = src.load_from_url(year=years[0], table_type=cur_row["TableType"], nrows=nrows)
-                if len(table.table)==0:
-                    raise ValueError("No records found in first year")
+                if skip_load:=cur_row['coverage_start'] == f'01/01/{years[0]}':
+                    coverage_start = cur_row['coverage_start']
+                if not skip_load:
+                    table = src.load_from_url(year=years[0], table_type=cur_row["TableType"], nrows=nrows)
+                    if len(table.table)==0:
+                        raise ValueError("No records found in first year")
                 
                 if pd.notnull(cur_row["date_field"]):
-                    min_val = table.table[cur_row["date_field"]].min()
-                    if "year" in cur_row["date_field"].lower() and "month" not in cur_row["date_field"].lower():
-                        coverage_start = "1/1/{}".format(min_val.year)
-                    else:
-                        if not isinstance(min_val, str):
-                            min_val = min_val.strftime('%m/%d/%Y')
-                        coverage_start = min_val
+                    if not skip_load:
+                        min_val = table.table[cur_row["date_field"]].min()
+                        if "year" in cur_row["date_field"].lower() and "month" not in cur_row["date_field"].lower():
+                            coverage_start = "1/1/{}".format(min_val.year)
+                        else:
+                            if not isinstance(min_val, str):
+                                min_val = min_val.strftime('%m/%d/%Y')
+                            coverage_start = min_val
 
+                    if cur_row['coverage_end'] == f'12/31/{years[-1]}':
+                        a = 1
                     table = src.load_from_url(years[-1], table_type=cur_row["TableType"])
+                    table.standardize()
                     col = table.table[cur_row["date_field"]][table.table[cur_row["date_field"]].apply(lambda x: not isinstance(x,str))]
+                    if len(col)==0:
+                        col = pd.to_datetime(table.table[cur_row["date_field"]])
                     max_val = col.max()
                     if "year" in cur_row["date_field"].lower() and "month" not in cur_row["date_field"].lower():
                         coverage_end = "12/31/{}".format(max_val.year)
@@ -150,7 +160,8 @@ def add_dates():
                 coverage_end = "12/31/{}".format(cur_row["Year"])
 
         if pd.isnull(df.loc[k,"coverage_start"]) or \
-            (df.loc[k,"coverage_start"][:-4]=="01/01/" and coverage_start[:-4]=='1/1/'):
+            (df.loc[k,"coverage_start"][:-4]=="01/01/" and coverage_start[:-4]=='1/1/') or \
+            pd.to_datetime(df.loc[k,"coverage_start"]) > pd.to_datetime(coverage_start):
             df.loc[k,"coverage_start"] = coverage_start
         elif df.loc[k,"coverage_start"] == coverage_start:
             pass
@@ -402,4 +413,4 @@ def count_agencies():
                 add_agency(agency, datasets['State'][k], agencies)
     print(f"OPD contains data for {len(agencies)} police agencies")
 
-count_agencies()
+update_dates()
