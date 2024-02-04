@@ -3,7 +3,6 @@ North Carolina,Fayetteville,Fayetteville,CRASHES,MULTIPLE,Website hangs,12/27/22
 California,Corona,Corona,CALLS FOR SERVICE,MULTIPLE,Data has 0 rows,08/26/23,08/26/23,,9/24/2023,Deleted,https://corstat.coronaca.gov/dataset/CorStat-Police-Response-Statistics/86hv-vkp4
 Florida,Fort Lauderdale,Fort Lauderdale,EMPLOYEE,NONE,Data has 0 rows,08/26/23,08/26/23,,,Deleted,
 New York,Buffalo,Buffalo,TRAFFIC ARRESTS,MULTIPLE,"This dataset or view cannot be found, or has been deleted.",01/14/24,,,,,
-Washington,Seattle,Seattle,PEDESTRIAN STOPS,MULTIPLE,Data has 0 rows,01/20/24,,,,,"Note! Subject Data is temporarily unavailable, while we chase down a bug. Please excuse the inconvenience (DGAL-8)."
 California,Alameda County,Alameda County,INCIDENTS,MULTIPLE,Token Required,01/20/24,,,,,
 Virginia,Henrico County,Henrico County,CALLS FOR SERVICE,MULTIPLE,"This dataset or view cannot be found, or has been deleted.",01/20/24,,,,,
 California,Sacramento,Sacramento,CALLS FOR SERVICE,2014,Token Required,01/24/24,,,,,
@@ -28,3 +27,4 @@ California,Sacramento,Sacramento,INCIDENTS,2017,Token Required,01/24/24,,,,,
 California,Sacramento,Sacramento,INCIDENTS,2018,Token Required,01/24/24,,,,,
 California,Sacramento,Sacramento,INCIDENTS,2019,Token Required,01/24/24,,,,,
 California,Sacramento,Sacramento,INCIDENTS,2020,Token Required,01/24/24,,,,,
+Missouri,St. Louis County,St. Louis County,USE OF FORCE,MULTI,Page Not Found,02/01/24,,,,,
