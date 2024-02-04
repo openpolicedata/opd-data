@@ -3,3 +3,4 @@ data/
 .~lock*
 *.pyc
 .vscode/launch.json
+python/Locations.csv
