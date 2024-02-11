@@ -219,6 +219,8 @@ def count_agencies():
         agency_name = re.sub(r"\sco\.?(?=\s|$)",' county',agency_name)
         agency_name = re.sub(r"^st\.?\s", "saint ", agency_name)
         agency_name = re.sub(r"dept\.?$", "department", agency_name)
+        agency_name = re.sub(r"\s*\#?\s*\d+$", "", agency_name)  # Remove any numbers at the end that may indicate parts of a larger org
+        agency_name = agency_name.replace("-",'')
         agency_name = agency_name.title()
         agency = clean(agency_name)
         reduced_agencies = [x[0] for x in agencies if x[1]==state]
@@ -226,6 +228,9 @@ def count_agencies():
         cur_type = [x for x in agency_types if x in agency_name]
         cur_type = cur_type[0] if len(cur_type)>0 else None
         matches = [x.replace('-',' ')==agency.replace('-',' ') for x in cleaned_agencies]
+        if len([m.start() for m in re.finditer('department', agency_name, re.IGNORECASE)])>1:
+            # Word department is repeated. String likely contains multiple departments or same one repeated
+            return
         if any(matches):
             full_names = [x for x,y in zip(reduced_agencies, matches) if y]
             match_types = []
@@ -241,8 +246,8 @@ def count_agencies():
                 if agency_name.startswith(ca_state_prison) and \
                     all([x.startswith(ca_state_prison) and x.split(',')[1] != agency_name.split(',')[1] for x in full_names]):
                     agencies.append((agency_name,state))
-                elif any(['Departmentuthern' in x for x in full_names]):
-                    return
+                # elif any(['Departmentuthern' in x for x in full_names]):
+                #     return
                 else:
                     raise NotImplementedError()
             else:
@@ -261,6 +266,9 @@ def count_agencies():
                 elif agency_name.startswith(full_names[0]) and len(full_type)==0:
                     k = [k for k,x in enumerate(agencies) if x==(full_names[0],state)][0]
                     agencies[k] = (agency_name,state)
+                elif agency_name.startswith(full_names[0]) and '-' in agency_name_orig:
+                    # This was found when 2 departments were concatenated with a -
+                    pass
                 else:
                     raise NotImplementedError()
         else:
@@ -339,6 +347,8 @@ def count_agencies():
                     r[0].lower().replace(" ", "").startswith(agency_name.lower()):
                     # Should be County PD
                     return
+                elif 'forest ranger' in agency_name.lower():
+                    return
                 else:
                     raise NotImplementedError()
                 # elif all([("county" in agency_name.lower())+("county" in x.lower())==1 for x in high_scoring]):
@@ -413,4 +423,5 @@ def count_agencies():
                 add_agency(agency, datasets['State'][k], agencies)
     print(f"OPD contains data for {len(agencies)} police agencies")
 
-update_dates()
+# update_dates()
+count_agencies()
