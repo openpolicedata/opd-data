@@ -1,9 +1,7 @@
 """Adds datasets from Stanford Open Policing Project
 The Stanford Open Policing Project contains datasets from many cities.
-However, it appears to no longer be updated.
-This methods adds all the datasets from Stanford that are not already added.
-It is assumed that ones that already added are from other open data sets
-and therefore, have more up-to-date data.
+This methods adds all the datasets from Stanford that are not already added and updates dates
+of previously added datasets.
 """
 
 import pandas as pd
@@ -201,29 +199,83 @@ while pd_loc >= 0 and pd_loc != len(r.text):
             already_added = True
             break
 
-    if not already_added:
-        date_field = "date"
+    date_field = "date"
 
-        matches = (df_stanford_old['Agency']==jurisdiction) & \
-            (df_stanford_old['State']==state)
-        if matches.sum()!=1:
-            if matches.sum()==0 and f"{state} {jurisdiction}" in new_cases.keys():
-                agency_full = new_cases[f"{state} {jurisdiction}"]
-                source_name = "State Police" if source_name=="State Patrol" and "Police" in agency_full else source_name
-            else:
-                raise NotImplementedError()
+    matches = (df_stanford_old['Agency']==jurisdiction) & \
+        (df_stanford_old['State']==state)
+    if already_added:
+        if jurisdiction=='Charlotte':
+            jurisdiction = source_name = "Charlotte-Mecklenburg" 
+        elif jurisdiction.startswith('Saint'):
+            jurisdiction = source_name = source_name.replace('Saint', 'St.')
+        matches = (df['Agency']==jurisdiction) & \
+            (df['State']==state) & \
+            (df['SourceName']==source_name)
+        if jurisdiction=='State Patrol' and matches.sum()==0:
+            jurisdiction = source_name = 'State Police'
+        matches = (df['Agency']==jurisdiction) & \
+            (df['State']==state) & \
+            (df['SourceName']==source_name)
+        
+        assert matches.sum()>0
+        if jurisdiction == 'MULTI':
+            assert df.loc[matches, 'AgencyFull'].isnull().all()
         else:
-            agency_full = df_stanford_old[matches].iloc[0]['AgencyFull']
+            assert (df.loc[matches, 'AgencyFull'] == df.loc[matches, 'AgencyFull'].iloc[0]).all()
+        agency_full = df.loc[matches, 'AgencyFull'].iloc[0]
+    elif matches.sum()!=1:
+        if matches.sum()==0 and f"{state} {jurisdiction}" in new_cases.keys():
+            agency_full = new_cases[f"{state} {jurisdiction}"]
+            jurisdiction = source_name = "State Police" if source_name=="State Patrol" and "Police" in agency_full else source_name
+        else:
+            raise NotImplementedError()
+    else:
+        agency_full = df_stanford_old[matches].iloc[0]['AgencyFull']
 
-        df_append = pd.DataFrame(
-            [[state,source_name,jurisdiction,agency_full,
-              table_type, start_date.strftime(r"%m/%d/%Y"), stop_date.strftime(r"%m/%d/%Y"),
-              datetime.now().strftime(r"%m/%d/%Y"),
-              stanford_desc, source_url, readme, csv_file, 
-              "MULTI","CSV",date_field,"",jurisdiction_field,'','']],
-            columns=df.columns)
+    dict_append = {
+        'State':state,
+        'SourceName':source_name,
+        'Agency':jurisdiction,
+        'AgencyFull':agency_full,
+        'TableType':table_type,
+        'coverage_start': start_date.strftime(r"%m/%d/%Y"),
+        'coverage_end': stop_date.strftime(r"%m/%d/%Y"),
+        'last_coverage_check':datetime.now().strftime(r"%m/%d/%Y"),
+        'Description': stanford_desc,
+        'source_url': source_url,
+        'readme': readme,
+        'URL': csv_file,
+        'Year': 'MULTI', 
+        'DataType': 'CSV',
+        'date_field': date_field,
+        'agency_field': jurisdiction_field
+    }
 
+    if already_added:
+        dict_append['min_version'] = 0.7
+
+    assert all([x in df.columns for x in dict_append.keys()])
+
+    dict_append = {k:[v] for k,v in dict_append.items()}
+    df_append = pd.DataFrame(dict_append, columns=df.columns)
+
+    matches = pd.Series(True, index=df_stanford_old.index)
+    for c in df_stanford_old.columns:
+        if c=='last_coverage_check':
+            continue
+        cur_val = df_append.loc[0, c]
+        is_null_cur = pd.isnull(cur_val) or (isinstance(cur_val, str) and len(cur_val)==0)
+        matches = matches & \
+            (
+                (df_stanford_old[c]==df_append.loc[0, c]) | \
+                (df_stanford_old[c].isnull() & is_null_cur)
+            )
+        
+    if not matches.any():
         df = pd.concat([df, df_append])
+    else:
+        # Re-insert original
+        df = pd.concat([df, df_stanford_old[matches]])
 
     pd_loc = next_pd_loc
     pd_name = next_pd_name
@@ -247,6 +299,7 @@ start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_s
 cols = start_cols.copy()
 cols.extend([x for x in df.columns if x not in start_cols])
 
+# TODO: Convert date columns to dates so that they sort properly
 df = df.sort_values(by=cols)
 
 df.to_csv(opd_csv,index=False)
