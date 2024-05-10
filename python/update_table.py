@@ -36,19 +36,22 @@ def compare_tables():
 def update_dates():
     import stanford
 
-    kstart = 901
+    kstart = 1007
 
     skip = []
     run = None
 
     src_file = r"opd_source_table.csv"
-    df = pd.read_csv(src_file)
     if src_file is not None:
         opd.datasets.reload(src_file)
+    df = opd.datasets.query()
     df_stanford = stanford.get_stanford()
 
+    df_stanford.loc[df_stanford['agency']=='MULTI', 'agency'] = opd.defs.MULTI
+
     downloadable_file = "Downloadable File"
-    data_type_to_access_type = {"Socrata":"API", "ArcGIS":"API","CSV":downloadable_file,"Excel":downloadable_file,"Carto":"API"}
+    data_type_to_access_type = {"Socrata":"API", "ArcGIS":"API","CSV":downloadable_file,"Excel":downloadable_file,"Carto":"API",
+                                'CKAN':'API'}
 
     if "coverage_start" not in df:
         df["coverage_start"] = pd.NaT
@@ -64,7 +67,13 @@ def update_dates():
     cols.extend([x for x in df.columns if x not in start_cols])
     df = df[cols]
 
+    df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='ignore')
+    df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='ignore')
+
     df = df.sort_values(by=cols)
+
+    df['coverage_start'] = df['coverage_start'].dt.strftime('%m/%d/%Y')
+    df['coverage_end'] = df['coverage_end'].dt.strftime('%m/%d/%Y')
 
     min_year = 1990
     for k in df.index:
@@ -83,6 +92,8 @@ def update_dates():
             match = (df_stanford["state"]==cur_row["State"]) & \
                 (df_stanford["source"].isin([cur_row["SourceName"],cur_row["SourceName"].replace("Police",'Patrol')])) & \
                 (df_stanford["agency"].isin([cur_row["Agency"], cur_row["Agency"].replace("Police",'Patrol')]))
+            if match.sum()==0 and cur_row["SourceName"]=='Charlotte-Mecklenburg':
+                match = df_stanford["source"] == 'Charlotte'
             if match.sum()!=1:
                 raise ValueError("Unable to find the correct # of Stanford matches")
             coverage_start = df_stanford[match]["start_date"].iloc[0].strftime('%m/%d/%Y')
@@ -93,7 +104,7 @@ def update_dates():
 
             if cur_row["Year"] == opd.defs.NA:
                 continue
-            elif cur_row["Year"] == "MULTI":
+            elif cur_row["Year"] == opd.defs.MULTI:
                 # Manually get years since get years gets years for all datasets
                 loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], cur_row['query'], 
                                         dataset_id=cur_row["dataset_id"],
@@ -104,7 +115,7 @@ def update_dates():
 
                 nrows = 1 if data_type_to_access_type[cur_row["DataType"]]=="API" else None
 
-                table = src.load(year=years[0], table_type=cur_row["TableType"], nrows=nrows)
+                table = src.load(year=years[0], table_type=cur_row["TableType"], nrows=nrows, url_contains=cur_row['URL'])
                 if len(table.table)==0:
                     raise ValueError("No records found in first year")
                 
@@ -114,13 +125,18 @@ def update_dates():
                         min_val = min_val.strftime('%m/%d/%Y')
                     coverage_start = min_val
 
-                    table = src.load(year=years[-1], table_type=cur_row["TableType"])
+                    table = src.load(year=years[-1], table_type=cur_row["TableType"], url_contains=cur_row['URL'])
                     table.standardize()
                     date_field = 'DATE' if 'DATE' in table.table else cur_row['date_field']
                     col = table.table[date_field][table.table[date_field].apply(lambda x: not isinstance(x,str))]
                     if len(col)==0:
                         col = pd.to_datetime(table.table[date_field])
-                    max_val = col.max()
+                    try:
+                        max_val = col.max()
+                    except TypeError:
+                        col = col[col.apply(lambda x: isinstance(x, pd.Timestamp))]
+                        max_val = col.max()
+
                     if not isinstance(max_val, str):
                         max_val = max_val.strftime('%m/%d/%Y')
                     coverage_end = max_val
@@ -423,5 +439,5 @@ def count_agencies():
                 add_agency(agency, datasets['State'][k], agencies)
     print(f"OPD contains data for {len(agencies)} police agencies")
 
-# update_dates()
-count_agencies()
+update_dates()
+# count_agencies()
