@@ -36,7 +36,7 @@ def compare_tables():
 def update_dates():
     import stanford
 
-    kstart = 1007
+    kstart = 0
 
     skip = []
     run = None
@@ -62,7 +62,7 @@ def update_dates():
     df["SourceName"] = df["SourceName"].str.replace("Police Department", "").str.strip()
 
     # Reorder columns so columns most useful to user are up front
-    start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end","last_coverage_check","Description","source_url","readme","URL"]
+    start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end","last_coverage_check",'Year',"Description","source_url","readme","URL"]
     cols = start_cols.copy()
     cols.extend([x for x in df.columns if x not in start_cols])
     df = df[cols]
@@ -182,7 +182,8 @@ def update_dates():
                 raise ValueError("Start")
 
         end_changed = False
-        if pd.to_datetime(coverage_end) > pd.to_datetime(df.loc[k,"coverage_end"]):
+        if pd.to_datetime(coverage_end) > pd.to_datetime(df.loc[k,"coverage_end"]) or \
+            (pd.isnull(pd.to_datetime(df.loc[k,"coverage_end"])) and not pd.isnull(pd.to_datetime(coverage_end))):
             end_changed = True
             df.loc[k,"coverage_end"] = coverage_end
         elif  pd.to_datetime(df.loc[k,"coverage_end"]) == pd.to_datetime(coverage_end):
@@ -196,6 +197,10 @@ def update_dates():
 
         if start_changed or end_changed:
             df.loc[k, "last_coverage_check"] = datetime.now().strftime('%m/%d/%Y')
+
+            raise NotImplementedError("Need to check if coverage start and end are datetimes and if so set using the below code")
+            # df['coverage_start'] = df['coverage_start'].dt.strftime('%m/%d/%Y')
+            # df['coverage_end'] = df['coverage_end'].dt.strftime('%m/%d/%Y')
 
             df.to_csv(src_file, index=False)
 
