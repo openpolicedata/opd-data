@@ -4,6 +4,8 @@ except:
     import sys
     sys.path.append('../openpolicedata')
     import openpolicedata as opd
+
+import os
 import pandas as pd
 from datetime import datetime
 import urllib
@@ -12,8 +14,8 @@ import re
 import warnings
 
 def compare_tables():
-    old_file = r"C:\Users\matth\repos\opd-data\opd_source_table.csv"
-    new_file = r"C:\Users\matth\repos\opd-data\opd_source_table w source url.csv"
+    old_file = r"opd_source_table.csv"
+    new_file = r"opd_source_table w source url.csv"
 
     df1 = pd.read_csv(old_file)
     df2 = pd.read_csv(new_file)
@@ -217,13 +219,13 @@ def update_dates():
 
             df.to_csv(src_file, index=False)
 
-agency_types = ['Police Department',"Sheriffs Department", 'State Prison for Women',"State Prison",
-                "State Hospital", "Probation Department", "Department of Corrections",'Health Care Facility','Medical Facility',
+agency_types = ['Police',"Sheriffs", 'St Prison for Women',"St Prison",
+                "St Hospital", "Probation", "Department of Corrections",'Health Care Facility','Medical Facility',
                 'Department of Public Safety','Community Correctional Facility', 'Prison', 
                 'Department of Forestry & Fire Protection','Department of Parks & Recreation','Transit',
-                'Unified School District Police Department','Sheriff','Forest Preserve Police Department',
-                'Park District Police Department','University Police Department','Illinois University Police Department',
-                'Transit Administration Police Department']
+                'Unified School District Police','Sheriff','Forest Preserve Police',
+                'Park District Police','University Police','Illinois University Police',
+                'Transit Administration Police', 'District Attorney']
 agency_types.sort(key=len, reverse=True)
 agency_types = [x.title() for x in agency_types]
 agency_types = [re.sub(r"s\s",' ',x) for x in agency_types]
@@ -231,7 +233,8 @@ agency_types = [re.sub(r"s\s",' ',x) for x in agency_types]
 p = re.compile(r"\s("+"|".join(agency_types)+r").*$", re.IGNORECASE)
 def count_agencies():
     from rapidfuzz import fuzz
-    ca_state_prison = "California State Prison"
+    ca_state_prison = "California St Prison"
+    st_univ_police = 'St University Police'
 
     def clean(x):
         return p.sub("", x).strip()
@@ -240,21 +243,24 @@ def count_agencies():
         agency_name = agency_name_orig.strip().title()\
                                  .replace("Allegany","Alleghany")\
                                  .replace(" Co. ", " County ")\
-                                 .replace(" So"," Sheriff's Department").title()
+                                 .replace(" So"," Sheriff").title()
         agency_name = re.sub('(.+) \\1', '\\1', agency_name)
-        agency_name = re.sub('Probation$','Probation Department',agency_name)
-        agency_name = re.sub(r'\sP(d|olice)$',r' Police Department',agency_name)
-        agency_name = re.sub(r"Sheriff'?[s|S]?(\sOffice?)?$",r"Sheriff's Department",agency_name)
+
+        agency_name = re.sub(r"['’]?s?\s*(Department|Office|dept\.?)", "", agency_name, flags=re.IGNORECASE)
+        agency_name = re.sub(r'\sPD\b',r' Police',agency_name, flags=re.IGNORECASE)
+        agency_name = re.sub(r"(\w+)pd",'\\1 Police', agency_name.lower(), flags=re.IGNORECASE)
+        agency_name = re.sub(r"\sSd$",r" Sheriff",agency_name, flags=re.IGNORECASE)
+        agency_name = re.sub(r"\sDa$",r" District Attorney",agency_name, flags=re.IGNORECASE)
         agency_name = re.sub(r"P(oli|rin)$",r"Police",agency_name)
-        agency_name = re.sub('Csp Troop [A-Z]','Connecticut State Police',agency_name)
+        agency_name = re.sub('Csp Troop [A-Z]','Connecticut St Police',agency_name)
         agency_name = re.sub(r'\s+',' ',agency_name)
-        agency_name = re.sub(r"('s|s|')\s",' ',agency_name.lower())
-        agency_name = re.sub(r"(\w+)pd",'\\1 Police Department', agency_name.lower())
+        agency_name = re.sub(r'\buniv\.?\b','university',agency_name, flags=re.IGNORECASE)
+        # agency_name = re.sub(r"('s|s|')\s",' ',agency_name.lower())
         agency_name = re.sub(r"\sco\.?(?=\s|$)",' county',agency_name)
-        agency_name = re.sub(r"^st\.?\s", "saint ", agency_name)
-        agency_name = re.sub(r"dept\.?$", "department", agency_name)
+        # Both saint and state can be abbreviated st so just convert to abbreviation
+        agency_name = re.sub(r"\b(state|saint)\b", "st", agency_name,  flags=re.IGNORECASE)
         agency_name = re.sub(r"\s*\#?\s*\d+$", "", agency_name)  # Remove any numbers at the end that may indicate parts of a larger org
-        agency_name = agency_name.replace("-",'')
+        agency_name = agency_name.replace("-",' ').replace(',','')
         agency_name = agency_name.title()
         agency = clean(agency_name)
         reduced_agencies = [x[0] for x in agencies if x[1]==state]
@@ -276,6 +282,9 @@ def count_agencies():
                 return
             elif cur_type is not None and all([x is not None and (w.startswith(ca_state_prison) or x!=cur_type) for w,x in zip(full_names,match_types)]):
                 agencies.append((agency_name,state))
+            elif agency_name.startswith(st_univ_police) and all([x.startswith(st_univ_police) and \
+                    x.replace(st_univ_police,'').strip() != agency_name.replace(st_univ_police,'').strip() for x in full_names]):
+                agencies.append((agency_name,state))
             elif len(full_names) != 1:
                 if agency_name.startswith(ca_state_prison) and \
                     all([x.startswith(ca_state_prison) and x.split(',')[1] != agency_name.split(',')[1] for x in full_names]):
@@ -292,6 +301,9 @@ def count_agencies():
                 elif (full_names[0].startswith(ca_state_prison) and agency_name.startswith(ca_state_prison) and \
                     full_names[0].split(',')[1] != agency_name.split(',')[1]) or \
                         full_names[0].startswith(ca_state_prison) + agency_name.startswith(ca_state_prison)==1:
+                    agencies.append((agency_name,state))
+                elif full_names[0].startswith(st_univ_police) and agency_name.startswith(st_univ_police) and \
+                    full_names[0].replace(st_univ_police,'').strip() != agency_name.replace(st_univ_police,'').strip():
                     agencies.append((agency_name,state))
                 elif agency_name.split('-')[0].strip() == full_names[0]:
                     pass
@@ -376,7 +388,7 @@ def count_agencies():
                 elif (cur_type is not None and all([x is not None and (w.startswith(ca_state_prison) or x!=cur_type) for w,x in zip(r,match_types)])) or \
                     (a:=re.match("Lo\s([A-Z][a-z]+)", agency_name)) and all([(b:=re.match("Lo\s([A-Z][a-z]+)", d)) and a.group(1)!=b.group(1) for d in r]):
                     agencies.append((agency_name,state))
-                elif agency_name=="Prince George Police Department" or \
+                elif agency_name=="Prince George Police" or \
                     " " not in agency_name and r[0].startswith(agency_name+" ") or \
                     r[0].lower().replace(" ", "").startswith(agency_name.lower()):
                     # Should be County PD
@@ -384,16 +396,19 @@ def count_agencies():
                 elif 'forest ranger' in agency_name.lower():
                     return
                 else:
-                    raise NotImplementedError()
+                    print(f"{agency_name_orig} is unknown")
+                    return
                 # elif all([("county" in agency_name.lower())+("county" in x.lower())==1 for x in high_scoring]):
                 #     agencies.append((agency_name,state))
             else:
                 agencies.append((agency_name,state))
 
-    src_file = r"C:\Users\matth\repos\opd-data\opd_source_table.csv"
+    src_file = r"opd_source_table.csv"
     if src_file is not None:
         opd.datasets.datasets =opd. datasets._build(src_file)
     datasets = opd.datasets.query()
+
+    output_dir = os.path.join('.','data')
 
     agencies = []
     for k in range(len(datasets)):
@@ -417,9 +432,20 @@ def count_agencies():
                 #         agencies.append((datasets['AgencyFull'][k],datasets['State'][k]))
 
     for k in range(len(datasets)):
-        if datasets['Agency'][k] == opd.defs.MULTI:
+        if datasets['Agency'][k] == opd.defs.MULTI and datasets['State'][k] != opd.defs.MULTI:
+            now = datetime.now().strftime("%d.%b %Y %H:%M:%S")
+            print(f"{now} Testing {k} of {len(datasets)-1}: {datasets.iloc[k]['SourceName']} {datasets.iloc[k]['TableType']} table")
+
             src = opd.Source(datasets['SourceName'][k], datasets['State'][k], agency=datasets["Agency"][k])
-            if datasets['DataType'][k] in ["CSV"]:
+            csv_filename = src.get_csv_filename(datasets['Year'][k], output_dir, datasets.iloc[k]["TableType"], 
+                     url_contains=datasets.iloc[k]['URL'], id_contains=datasets.iloc[k]['dataset_id'])
+            output_file = csv_filename.replace('.csv','.txt')
+            if datasets['Year'][k]!=opd.defs.MULTI and datasets['Year'][k]!=opd.defs.NA and datasets['Year'][k] < datetime.now().year and \
+                os.path.exists(output_file):
+                with open(output_file) as f:
+                    new_agencies = [x.strip() for x in f.readline().split(',')]
+
+            elif datasets['DataType'][k] in ["CSV"]:
                 t = src.load(datasets['TableType'][k], datasets['Year'][k])
                 new_agencies = t.table[datasets['agency_field'][k]].unique()
                 if datasets['agency_field'][k] == "ORI":
@@ -429,6 +455,8 @@ def count_agencies():
                         data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2022-08/UseofForce_ORI-Agency_Names_2021.csv","AGENCY_NAME","ORI", pd.read_csv)
                     elif datasets['Year'][k]==2022:
                         data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_ORI-Agency_Names_2022f.csv","AGENCY_NAME","ORI", pd.read_csv)
+                    elif datasets['Year'][k]==2023:
+                        data = (r"https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_ORI-Agency_Names_2023.csv","AGENCY_NAME","ORI", pd.read_csv)
                     else:
                         raise ValueError("Unknown dataset")
                     try:
@@ -449,7 +477,13 @@ def count_agencies():
                         else:
                             new_agencies[j] = match.iloc[0]
             else:
-                new_agencies = src.get_agencies(datasets['TableType'][k])
+                # ds_filter, _ = src._Source__filter_for_source(datasets['TableType'][k], datasets.iloc[k]["Year"], None, None, errors=False)
+                # url_contains = datasets.iloc[k]['URL'] if isinstance(ds_filter,pd.DataFrame) and len(ds_filter)>1 else None
+                # id_contains = datasets.iloc[k]['dataset_id'] if isinstance(ds_filter,pd.DataFrame) and len(ds_filter)>1 else None
+                new_agencies = src.get_agencies(datasets['TableType'][k], year=datasets.iloc[k]["Year"])
+
+            with open(output_file, "w") as f:
+                f.write(','.join(new_agencies))
             
             for agency in new_agencies:
                 if pd.isnull(agency) or len(agency)==1:
@@ -457,5 +491,5 @@ def count_agencies():
                 add_agency(agency, datasets['State'][k], agencies)
     print(f"OPD contains data for {len(agencies)} police agencies")
 
-update_dates()
-# count_agencies()
+# update_dates()
+count_agencies()
