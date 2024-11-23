@@ -36,7 +36,7 @@ def compare_tables():
 def update_dates():
     import stanford
 
-    kstart = 0
+    kstart = 1279
 
     skip = []
     run = None
@@ -62,7 +62,8 @@ def update_dates():
     df["SourceName"] = df["SourceName"].str.replace("Police Department", "").str.strip()
 
     # Reorder columns so columns most useful to user are up front
-    start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end","last_coverage_check",'Year',"Description","source_url","readme","URL"]
+    start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end",
+                  "last_coverage_check",'Year','agency_originated','supplying_entity',"Description","source_url","readme","URL"]
     cols = start_cols.copy()
     cols.extend([x for x in df.columns if x not in start_cols])
     df = df[cols]
@@ -100,7 +101,7 @@ def update_dates():
             coverage_end = df_stanford[match]["end_date"].iloc[0].strftime('%m/%d/%Y')
 
         else:
-            src = opd.Source(cur_row["SourceName"], cur_row["State"])
+            src = opd.Source(cur_row["SourceName"], cur_row["State"], agency=cur_row["Agency"])
 
             if cur_row["Year"] == opd.defs.NA:
                 continue
@@ -113,14 +114,24 @@ def update_dates():
                 years.sort()
                 years = [x for x in years if x >= min_year]
 
+                if len(years)==0:
+                    warnings.warn(f'No years found for {cur_row["SourceName"]}, {cur_row["State"]} {cur_row["TableType"]}')
+                    continue
+
                 nrows = 1 if data_type_to_access_type[cur_row["DataType"]]=="API" else None
 
-                table = src.load(year=years[0], table_type=cur_row["TableType"], nrows=nrows, url_contains=cur_row['URL'])
+                # For if case, assuming 1st year might be a mistake
+                years_req = years[:2] if len(years)>1 and years[1]-years[0]>5 else years[0]
+
+                table = src.load(year=years_req, table_type=cur_row["TableType"], nrows=nrows, url_contains=cur_row['URL'])
                 if len(table.table)==0:
                     raise ValueError("No records found in first year")
                 
                 if pd.notnull(cur_row["date_field"]) or 'DATE' in table.table.columns:
                     min_val = table.table[cur_row["date_field"]].min()
+                    if isinstance(min_val, pd.Timestamp) and min_val.year<2000 and len(table.table)>1 and \
+                        table.table[cur_row["date_field"]].nsmallest(2).iloc[1].year - min_val.year > 5:
+                        min_val = table.table[cur_row["date_field"]].nsmallest(2).iloc[1]
                     if not isinstance(min_val, str):
                         min_val = min_val.strftime('%m/%d/%Y')
                     coverage_start = min_val
@@ -163,7 +174,7 @@ def update_dates():
                                 max_val = max_val.strftime('%m/%d/%Y')
                             coverage_end = max_val
             else:
-                coverage_start = "1/1/{}".format(cur_row["Year"])
+                coverage_start = "01/01/{}".format(cur_row["Year"])
                 coverage_end = "12/31/{}".format(cur_row["Year"])
 
         start_changed = False
@@ -198,7 +209,9 @@ def update_dates():
         if start_changed or end_changed:
             df.loc[k, "last_coverage_check"] = datetime.now().strftime('%m/%d/%Y')
 
-            raise NotImplementedError("Need to check if coverage start and end are datetimes and if so set using the below code")
+            assert df['coverage_start'].apply(lambda x: pd.isnull(x) or isinstance(x,str)).all()
+            assert df['coverage_end'].apply(lambda x: pd.isnull(x) or isinstance(x,str)).all()
+
             # df['coverage_start'] = df['coverage_start'].dt.strftime('%m/%d/%Y')
             # df['coverage_end'] = df['coverage_end'].dt.strftime('%m/%d/%Y')
 
@@ -405,7 +418,7 @@ def count_agencies():
 
     for k in range(len(datasets)):
         if datasets['Agency'][k] == opd.defs.MULTI:
-            src = opd.Source(datasets['SourceName'][k], datasets['State'][k])
+            src = opd.Source(datasets['SourceName'][k], datasets['State'][k], agency=datasets["Agency"][k])
             if datasets['DataType'][k] in ["CSV"]:
                 t = src.load(datasets['TableType'][k], datasets['Year'][k])
                 new_agencies = t.table[datasets['agency_field'][k]].unique()
