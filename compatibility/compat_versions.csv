@@ -1,4 +1,5 @@
 version,required,csv_name,comments
-0.00,False,opd_source_table_20240213_v0.0.csv,For Testing Only
+0,False,opd_source_table_20240213_v0.0.csv,For Testing Only
 0.0.1,True,opd_source_table_20240213_v0.0.1.csv,For Testing Only
 0.8.1,True,opd_source_table_20241120_v0.8.1.csv,Older OPD versions cannot handle multi-state data
+0.9.0,True,opd_source_table_20250206_v0.9.0.csv,"After this version, dataset_id converted to JSON in complex cases"
