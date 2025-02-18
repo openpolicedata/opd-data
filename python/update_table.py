@@ -10,6 +10,7 @@ import pandas as pd
 from datetime import datetime
 import urllib
 from io import BytesIO
+import json
 import re
 import warnings
 
@@ -35,10 +36,8 @@ def compare_tables():
     df = df.sort_values(by=cols)
     df = df.drop_duplicates(subset=cols, keep=False, ignore_index=True)
 
-def update_dates():
+def update_dates(kstart=0):
     import stanford
-
-    kstart = 1279
 
     skip = []
     run = None
@@ -73,7 +72,9 @@ def update_dates():
     df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='ignore')
     df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='ignore')
 
-    df = df.sort_values(by=cols)
+    sort_cols = cols.copy()
+    sort_cols.remove('dataset_id')
+    df = df.sort_values(by=sort_cols)
 
     df['coverage_start'] = df['coverage_start'].dt.strftime('%m/%d/%Y')
     df['coverage_end'] = df['coverage_end'].dt.strftime('%m/%d/%Y')
@@ -110,11 +111,15 @@ def update_dates():
             elif cur_row["Year"] == opd.defs.MULTI:
                 # Manually get years since get years gets years for all datasets
                 loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], cur_row['query'], 
-                                        dataset_id=cur_row["dataset_id"],
+                                        dataset=cur_row["dataset_id"],
                                         date_field=cur_row["date_field"], agency_field=cur_row["agency_field"])
-                years = loader.get_years(force=True)
-                years.sort()
-                years = [x for x in years if x >= min_year]
+                
+                if cur_row['DataType'] in ["Excel",'CSV']:
+                    years = [opd.defs.MULTI]
+                else:
+                    years = loader.get_years()
+                    years.sort()
+                    years = [x for x in years if x >= min_year]
 
                 if len(years)==0:
                     warnings.warn(f'No years found for {cur_row["SourceName"]}, {cur_row["State"]} {cur_row["TableType"]}')
@@ -125,7 +130,8 @@ def update_dates():
                 # For if case, assuming 1st year might be a mistake
                 years_req = years[:2] if len(years)>1 and years[1]-years[0]>5 else years[0]
 
-                table = src.load(year=years_req, table_type=cur_row["TableType"], nrows=nrows, url_contains=cur_row['URL'])
+                table = src.load(year=years_req, table_type=cur_row["TableType"], nrows=nrows, url=cur_row['URL'], id=cur_row['dataset_id'],
+                                 sortby='date')
                 if len(table.table)==0:
                     raise ValueError("No records found in first year")
                 
@@ -138,7 +144,7 @@ def update_dates():
                         min_val = min_val.strftime('%m/%d/%Y')
                     coverage_start = min_val
 
-                    table = src.load(year=years[-1], table_type=cur_row["TableType"], url_contains=cur_row['URL'])
+                    table = src.load(year=years[-1], table_type=cur_row["TableType"], url=cur_row['URL'], id=cur_row['dataset_id'])
                     table.standardize()
                     date_field = 'DATE' if 'DATE' in table.table else cur_row['date_field']
                     col = table.table[date_field][table.table[date_field].apply(lambda x: not isinstance(x,str))]
@@ -165,12 +171,14 @@ def update_dates():
                         if isinstance(table.table[dt_col],str):
                             raise NotImplementedError()
                         else:
+                            table.table[dt_col] = pd.to_datetime(table.table[dt_col])
                             min_val = table.table[dt_col].min()
                             if not isinstance(min_val, str):
                                 min_val = min_val.strftime('%m/%d/%Y')
                             coverage_start = min_val
 
-                            table = src.load(year=years[-1], table_type=cur_row["TableType"])
+                            if years[-1]!=years_req:
+                                table = src.load(year=years[-1], table_type=cur_row["TableType"], url=cur_row['URL'], id=cur_row['dataset_id'])
                             max_val = table.table[dt_col].max()
                             if not isinstance(max_val, str):
                                 max_val = max_val.strftime('%m/%d/%Y')
@@ -217,7 +225,9 @@ def update_dates():
             # df['coverage_start'] = df['coverage_start'].dt.strftime('%m/%d/%Y')
             # df['coverage_end'] = df['coverage_end'].dt.strftime('%m/%d/%Y')
 
-            df.to_csv(src_file, index=False)
+            df_save = df.copy()
+            df_save['dataset_id'] = df_save['dataset_id'].apply(lambda x: json.dumps(x) if type(x) in [list, dict] else x)
+            df_save.to_csv(src_file, index=False)
 
 agency_types = ['Police',"Sheriffs", 'St Prison for Women',"St Prison",
                 "St Hospital", "Probation", "Department of Corrections",'Health Care Facility','Medical Facility',
@@ -386,7 +396,7 @@ def count_agencies():
                         else:
                             return
                 elif (cur_type is not None and all([x is not None and (w.startswith(ca_state_prison) or x!=cur_type) for w,x in zip(r,match_types)])) or \
-                    (a:=re.match("Lo\s([A-Z][a-z]+)", agency_name)) and all([(b:=re.match("Lo\s([A-Z][a-z]+)", d)) and a.group(1)!=b.group(1) for d in r]):
+                    (a:=re.match(r"Lo\s([A-Z][a-z]+)", agency_name)) and all([(b:=re.match(r"Lo\s([A-Z][a-z]+)", d)) and a.group(1)!=b.group(1) for d in r]):
                     agencies.append((agency_name,state))
                 elif agency_name=="Prince George Police" or \
                     " " not in agency_name and r[0].startswith(agency_name+" ") or \
@@ -446,7 +456,7 @@ def count_agencies():
                     new_agencies = [x.strip() for x in f.readline().split(',')]
 
             elif datasets['DataType'][k] in ["CSV"]:
-                t = src.load(datasets['TableType'][k], datasets['Year'][k])
+                t = src.load(datasets['TableType'][k], datasets['Year'][k], url=datasets['URL'][k], id=datasets['dataset_id'][k])
                 new_agencies = t.table[datasets['agency_field'][k]].unique()
                 if datasets['agency_field'][k] == "ORI":
                     if datasets['Year'][k]<=2020:
@@ -491,5 +501,5 @@ def count_agencies():
                 add_agency(agency, datasets['State'][k], agencies)
     print(f"OPD contains data for {len(agencies)} police agencies")
 
-# update_dates()
-count_agencies()
+update_dates(kstart=1296)
+# count_agencies()
