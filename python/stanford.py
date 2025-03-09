@@ -199,3 +199,45 @@ def get_stanford():
             next_st_loc, next_state = find_next_state(r, st_loc)
 
     return pd.DataFrame({"state":states, "source":sources, "agency":agencies, "start_date":start_dates, "end_date":end_dates})
+
+
+def gen_stanford_table():
+    import re
+    url = "https://openpolicing.stanford.edu/data/"
+
+    r = requests.get(url)
+
+    table_content = re.findall('<td(.*?)>(.*?)</td>', r.text, re.DOTALL)
+
+    cols = ['State']
+    data = []
+    for header, content in table_content:
+        if content in _us_state_abbrev:
+            state = content
+            continue
+
+        title = re.search(r'data\-title\=\"([\w\s]+)\"', header)
+        colname = title.group(1)
+        if colname=='State':
+            data.append({'State':state})
+            colname = 'agency'
+        elif colname=='Download':
+            continue
+
+        if (val:=re.findall(r'>\s*(\d{4}\-\d{2}\-\d{2})\s*<', content)):
+            data[-1]['Coverage Start'] = val[0]
+            data[-1]['Coverage Stop'] = val[1]
+        elif (val:=re.search(r'>(\w[\w\s\-]+)<', content)):
+            data[-1][colname] = val.group(1)
+        elif (val:=re.search(r'>\s*(\d+)\s*<', content)):
+            data[-1][colname] = int(val.group(1))
+        elif (val:=re.findall(r'([\w\-]+)\=\"([\w\s\-]+)\"', content)) and \
+            val==[('class', 'fa fa-square'), ('aria-hidden', 'true')]:
+            data[-1][colname] = True
+        elif len(content)==0:
+            data[-1][colname] = ""
+        else:
+            raise ValueError(f"Unknown content {content}")
+
+    df = pd.DataFrame(data)
+    df.to_csv('Stanford_Data_Summary.csv', index=False)
