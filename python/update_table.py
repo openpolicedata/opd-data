@@ -13,6 +13,7 @@ from io import BytesIO
 import json
 import re
 import warnings
+from zipfile import ZipFile
 
 def compare_tables():
     old_file = r"opd_source_table.csv"
@@ -302,7 +303,7 @@ def count_agencies():
                 # elif any(['Departmentuthern' in x for x in full_names]):
                 #     return
                 else:
-                    raise NotImplementedError()
+                    return
             else:
                 full_type = [x for x in agency_types if x in full_names[0]]
                 if cur_type is not None and len(full_type)>=1 and cur_type!=full_type[0] and \
@@ -326,7 +327,7 @@ def count_agencies():
                     # This was found when 2 departments were concatenated with a -
                     pass
                 else:
-                    raise NotImplementedError()
+                    return
         else:
             def fuzzclean(x):
                 return x.replace("County","").replace("University Of","")
@@ -448,7 +449,7 @@ def count_agencies():
 
             src = opd.Source(datasets['SourceName'][k], datasets['State'][k], agency=datasets["Agency"][k])
             csv_filename = src.get_csv_filename(datasets['Year'][k], output_dir, datasets.iloc[k]["TableType"], 
-                     url_contains=datasets.iloc[k]['URL'], id_contains=datasets.iloc[k]['dataset_id'])
+                     url=datasets.iloc[k]['URL'], id=datasets.iloc[k]['dataset_id'])
             output_file = csv_filename.replace('.csv','.txt')
             if datasets['Year'][k]!=opd.defs.MULTI and datasets['Year'][k]!=opd.defs.NA and datasets['Year'][k] < datetime.now().year and \
                 os.path.exists(output_file):
@@ -501,5 +502,112 @@ def count_agencies():
                 add_agency(agency, datasets['State'][k], agencies)
     print(f"OPD contains data for {len(agencies)} police agencies")
 
-update_dates(kstart=1296)
+def update_ripa(url, dict_url, year):
+    src_file = r"opd_source_table.csv"
+    if src_file is not None:
+        opd.datasets.reload(src_file)
+    df = opd.datasets.query()
+
+    df['dataset_id'] = df['dataset_id'].apply(lambda x: json.dumps(x) if type(x) in [list, dict] else x)
+
+    df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='ignore')
+    df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='ignore')
+    df['last_coverage_check'] = pd.to_datetime(df['last_coverage_check'])
+
+    match = (df['SourceName']=='Alameda County') & (df['TableType']=='STOPS') & (df['Year']==year-1)
+    assert match.sum()==1
+
+    base = df[match].iloc[0]
+    base['coverage_start'] = f'01/01/{year}'
+    base['coverage_end'] = f'12/31/{year}'
+    base['last_coverage_check'] = datetime.now().strftime('%m/%d/%Y')
+    base['Year'] = year
+    base['readme'] = dict_url
+    base['URL'] = url
+
+    q1_data = []
+
+    with opd.httpio.open(url, block_size=2**20) as fp:
+        with ZipFile(fp, 'r') as z:
+            for name in z.namelist():
+                new_entry = base.copy()
+
+                m = re.search(rf'Data\s\_\s(?P<loc>[\w\s]+)\s{year}\sQ?(?P<Q>\d)?', name)
+                assert m
+
+                if m.group('Q')!=None:
+                    if m.group('Q')=='1':
+                        assert m.group('loc') not in q1_data
+                        q1_data.append(m.group('loc'))
+
+                        new_entry['dataset_id'] = json.dumps({'files': [name.replace(' Q1 ', f' Q{x} ') for x in range(1,5)]})
+                    else:
+                        assert m.group('loc') in q1_data
+                        continue
+                else:
+                    new_entry['dataset_id'] = name
+
+                match = (df['URL']==url) & (df['dataset_id']==new_entry['dataset_id'])
+                assert match.sum()<2
+                if match.sum()>0:
+                    continue
+
+                if m.group('loc')=='CHP':
+                    new_entry['SourceName'] = 'State Patrol'
+                    new_entry['Agency'] = 'State Patrol'
+                    new_entry['AgencyFull'] = 'California Highway Patrol'
+                else:
+                    data = pd.read_excel(BytesIO(z.read(name)))
+
+                    if data[base['agency_field']].nunique()>1:
+                        county = m.group('loc') + " County"
+
+                        assert ((df['SourceName']==county) & (df['Agency']=="MULTIPLE")).any()
+
+                        new_entry['SourceName'] = county
+                        new_entry['Agency'] = opd.defs.MULTI
+                        new_entry['AgencyFull'] = pd.NA
+                    else:
+                        agency = data[base['agency_field']].iloc[0]
+
+                        agency = re.sub(r' SO$', " SHERIFF'S OFFICE", agency).replace(' CO ',' COUNTY ')
+                        agency = re.sub(r' SHERIFF$', " SHERIFF'S OFFICE", agency)
+
+                        agency_types = ["SHERIFF'S OFFICE", 'POLICE DEPARTMENT']
+                        assert any(x in agency for x in agency_types)
+                        city = agency
+                        for x in agency_types:
+                            city = city.replace(x, '').strip()
+
+                        city = city.title()
+                        agency = agency.title().replace("'S","'s")
+
+                        assert ((df['SourceName']==city) & (df['Agency']==city) & (df['AgencyFull'].isin([agency]))).any()
+
+                        new_entry['SourceName'] = city
+                        new_entry['Agency'] = city
+                        new_entry['AgencyFull'] = agency
+
+                print(name)
+                
+                df = pd.concat([df,new_entry.to_frame().T], ignore_index=True)
+                sort_cols = df.columns.to_list().copy()
+                sort_cols.remove('dataset_id')
+                df = df.sort_values(by=sort_cols)
+
+                df_save = df.copy()
+                df_save['dataset_id'] = df_save['dataset_id'].apply(lambda x: json.dumps(x) if type(x) in [list, dict] else x)
+
+                df_save['coverage_start'] = pd.to_datetime(df_save['coverage_start']).dt.strftime('%m/%d/%Y')
+                df_save['coverage_end'] = pd.to_datetime(df_save['coverage_end']).dt.strftime('%m/%d/%Y')
+                df_save['last_coverage_check'] = pd.to_datetime(df_save['last_coverage_check']).dt.strftime('%m/%d/%Y')
+                df_save.to_csv(src_file, index=False)
+
+
+        
+# update_dates(kstart=1296)
 # count_agencies()
+
+update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA-Stop-Data-2023.zip',
+            'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA%20Dataset%20Read%20Me%202023%20Final.pdf',
+            2023)
