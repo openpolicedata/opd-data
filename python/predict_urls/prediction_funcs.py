@@ -7,6 +7,20 @@ from pathlib import Path
 OPD_SOURCE_TABLE = Path(__file__).parent.parent.parent / "opd_source_table.csv"
 TRACKING_TABLE = Path(__file__).parent.parent.parent / "police_data_source_tracking.csv"
 
+from openpolicedata.data_loaders import Arcgis
+
+def is_arcgis_data_available(url):
+    """
+    Returns True if the ArcGIS endpoint is available and has at least one record.
+    Returns False if not available, not accessible, or has no data.
+    """
+    try:
+        ags = Arcgis(url)
+        count = ags.get_count()
+        return count > 0
+    except Exception:
+        return False
+
 def try_url_years(
     url: str,
     years_to_try: range = None,
@@ -51,21 +65,22 @@ def try_url_years(
 
     for y in years_to_try:
         new_url = url.replace(year_str, str(y), 1)
+        is_arcgis = "featureserver" in new_url.lower() or "mapserver" in new_url.lower() or (extra_fields and extra_fields.get("DataType", "").lower() == "arcgis")
         try:
-            resp = requests.head(new_url, allow_redirects=False, timeout=10)
+            if is_arcgis:
+                valid = is_arcgis_data_available(new_url)
+                resp_status = "ArcGIS check"
+            else:
+                resp = requests.head(new_url, allow_redirects=False, timeout=10)
+                valid = resp.status_code == 200
+                resp_status = resp.status_code
         except Exception as e:
             if verbose:
                 print(f"Error fetching {new_url}: {e}")
             continue
-        # content_type = resp.headers.get("Content-Type", "")
-        # if resp.status_code == 200 and (
-        #     "csv" in content_type.lower() or
-        #     "excel" in content_type.lower() or
-        #     "arcgis" in new_url.lower()
-        # ):
-        if resp.status_code == 200:
+        if valid:
             if verbose:
-                print(f"Valid URL found: {new_url}")
+                print(f"Valid URL found: {new_url} (status: {resp_status})")
             # Prepare row for OPD_Source_table
             fields = [
                 "State", "SourceName", "Agency", "AgencyFull", "TableType",
@@ -76,7 +91,7 @@ def try_url_years(
             row = {f: "" for f in fields}
             row["URL"] = new_url
             row["Year"] = str(y)
-            row["last_coverage_check"] = datetime.now().strftime("%d/%m/%Y")
+            row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
             if extra_fields:
                 for k, v in extra_fields.items():
                     if k in row:
@@ -90,7 +105,7 @@ def try_url_years(
             return new_url
         else:
             if verbose:
-                print(f"{new_url}: status {resp.status_code}, content-type {content_type}")
+                print(f"{new_url}: not valid (status: {resp_status})")
     if verbose:
         print("No valid URL found.")
     return None
@@ -173,7 +188,7 @@ def auto_update_sources(
             new_row = row.copy()
             new_row["URL"] = new_url
             new_row["Year"] = str(new_year)
-            new_row["last_coverage_check"] = datetime.now().strftime("%Y-%m-%d")
+            new_row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
             opd_df = pd.read_csv(source_table_path)
             opd_df = pd.concat([opd_df, pd.DataFrame([new_row])], ignore_index=True)
             opd_df.to_csv(source_table_path, index=False)
