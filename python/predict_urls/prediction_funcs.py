@@ -1,24 +1,70 @@
 import re
-import requests
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
+
+from openpolicedata.data_loaders import Arcgis, Carto, Ckan, Csv, Excel, Html, Socrata
 
 OPD_SOURCE_TABLE = Path(__file__).parent.parent.parent / "opd_source_table.csv"
 TRACKING_TABLE = Path(__file__).parent.parent.parent / "police_data_source_tracking.csv"
 
-from openpolicedata.data_loaders import Arcgis
+# Map DataType to loader class and required spreadsheet_fields
+LOADER_MAP = {
+    "arcgis": {
+        "loader": Arcgis,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType", "date_field"],  # date_field required if Year is MULTI
+        "constructor": lambda url, sf: (url, sf.get("date_field"), sf.get("query"))
+    },
+    "carto": {
+        "loader": Carto,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType", "dataset_id"],  # dataset_id required
+        "constructor": lambda url, sf: (url, sf["dataset_id"], sf.get("date_field"), sf.get("query"))
+    },
+    "ckan": {
+        "loader": Ckan,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType", "dataset_id"],  # dataset_id required
+        "constructor": lambda url, sf: (url, sf["dataset_id"], sf.get("date_field"), sf.get("query"))
+    },
+    "csv": {
+        "loader": Csv,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType"],
+        "constructor": lambda url, sf: (url, sf.get("date_field"), sf.get("agency_field"), sf.get("dataset_id"), sf.get("query"))
+    },
+    "excel": {
+        "loader": Excel,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType"],
+        "constructor": lambda url, sf: (url, sf.get("dataset_id"), sf.get("date_field"), sf.get("agency_field"))
+    },
+    "html": {
+        "loader": Html,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType"],
+        "constructor": lambda url, sf: (url, sf.get("date_field"), sf.get("agency_field"))
+    },
+    "socrata": {
+        "loader": Socrata,
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType", "dataset_id"],  # dataset_id required
+        "constructor": lambda url, sf: (url, sf["dataset_id"], sf.get("date_field"))
+    }
+}
 
-def is_arcgis_data_available(url):
+def is_data_available(data_type, url, spreadsheet_fields):
     """
-    Returns True if the ArcGIS endpoint is available and has at least one record.
+    Returns True if the endpoint is available and has at least one record.
     Returns False if not available, not accessible, or has no data.
     """
+    loader_info = LOADER_MAP.get(data_type.lower())
+    if not loader_info:
+        raise ValueError(f"Unsupported DataType: {data_type}")
+    # Check required fields
+    for field in loader_info["required_fields"]:
+        if field not in spreadsheet_fields or (spreadsheet_fields[field] in [None, ""] and field != "date_field"):
+            raise ValueError(f"Missing required field '{field}' for DataType '{data_type}'")
     try:
-        ags = Arcgis(url)
-        count = ags.get_count()
+        args = loader_info["constructor"](url, spreadsheet_fields)
+        loader = loader_info["loader"](*args)
+        count = loader.get_count()
         return count > 0
-    except Exception:
+    except Exception as e:
         return False
 
 def try_url_years(
@@ -27,29 +73,21 @@ def try_url_years(
     forward: bool = False,
     n_years: int = 5,
     year_slice: tuple = None,
-    extra_fields: dict = None,
+    spreadsheet_fields: dict = None,
     verbose: bool = True
 ):
     """
     Try to find valid URLs by replacing a 4-digit year in the URL.
-
-    Args:
-        url (str): The URL containing a 4-digit year.
-        years_to_try (range, optional): Range of years to try. If None, uses +/- n_years from found year.
-        forward (bool, optional): If True, test forward in time. Default is False (backward).
-        n_years (int, optional): How many years to test. Default is 5.
-        year_slice (tuple, optional): (start, end) indices to extract year substring.
-        extra_fields (dict, optional): Extra fields for OPD_Source_table row.
-        verbose (bool, optional): Print progress and results.
-    Returns:
-        str or None: The first valid URL found, or None.
     """
+    if spreadsheet_fields is None or "DataType" not in spreadsheet_fields:
+        raise ValueError("spreadsheet_fields must include 'DataType' key")
+    data_type = spreadsheet_fields["DataType"].lower()
+
     # 1. Find 4-digit year in URL
     if year_slice:
         year_str = url[year_slice[0]:year_slice[1]]
         if not re.fullmatch(r"\d{4}", year_str):
             raise ValueError("Specified slice does not contain a 4-digit year.")
-        matches = [year_str]
     else:
         matches = re.findall(r"\d{4}", url)
         if len(matches) != 1:
@@ -65,15 +103,9 @@ def try_url_years(
 
     for y in years_to_try:
         new_url = url.replace(year_str, str(y), 1)
-        is_arcgis = "featureserver" in new_url.lower() or "mapserver" in new_url.lower() or (extra_fields and extra_fields.get("DataType", "").lower() == "arcgis")
         try:
-            if is_arcgis:
-                valid = is_arcgis_data_available(new_url)
-                resp_status = "ArcGIS check"
-            else:
-                resp = requests.head(new_url, allow_redirects=False, timeout=10)
-                valid = resp.status_code == 200
-                resp_status = resp.status_code
+            valid = is_data_available(data_type, new_url, spreadsheet_fields)
+            resp_status = "OPD loader check"
         except Exception as e:
             if verbose:
                 print(f"Error fetching {new_url}: {e}")
@@ -92,8 +124,8 @@ def try_url_years(
             row["URL"] = new_url
             row["Year"] = str(y)
             row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
-            if extra_fields:
-                for k, v in extra_fields.items():
+            if spreadsheet_fields:
+                for k, v in spreadsheet_fields.items():
                     if k in row:
                         row[k] = v
             # Append to OPD_Source_table.csv
@@ -130,8 +162,8 @@ def auto_update_sources(
     # 1. Load tables
     df = pd.read_csv(source_table_path)
     tracking = pd.read_csv(tracking_table_path)
-    # 2. Filter by DataType
-    testable_types = ["CSV", "Excel", "Arcgis"]
+    # 2. Filter by DataType (use all testable types in LOADER_MAP)
+    testable_types = list(LOADER_MAP.keys())
     df = df[df["DataType"].str.lower().isin([t.lower() for t in testable_types])]
     # 3. Filter URLs with exactly one 4-digit year
     df = df[df["URL"].str.contains(r"\d{4}", regex=True)]
@@ -162,6 +194,7 @@ def auto_update_sources(
     for idx in outdated:
         row = df.loc[idx]
         url = row["URL"]
+        data_type = row["DataType"].lower()
         year_match = re.search(r"\d{4}", url)
         if not year_match:
             continue
@@ -170,20 +203,20 @@ def auto_update_sources(
         # Try next year
         new_year = year + 1
         new_url = url.replace(year_str, str(new_year), 1)
+        # Prepare spreadsheet_fields/extra_fields for loader
+        spreadsheet_fields = row.to_dict()
+        spreadsheet_fields["Year"] = str(new_year)
+        spreadsheet_fields["URL"] = new_url
         try:
-            resp = requests.head(new_url, allow_redirects=False, timeout=10)
+            valid = is_data_available(data_type, new_url, spreadsheet_fields)
+            resp_status = "OPD loader check"
         except Exception as e:
             if verbose:
                 print(f"Error fetching {new_url}: {e}")
             continue
-        content_type = resp.headers.get("Content-Type", "")
-        if resp.status_code == 200 and (
-            "csv" in content_type.lower() or
-            "excel" in content_type.lower() or
-            "arcgis" in new_url.lower()
-        ):
+        if valid:
             if verbose:
-                print(f"Valid new URL found: {new_url}")
+                print(f"Valid new URL found: {new_url} (status: {resp_status})")
             # Add to OPD_Source_table
             new_row = row.copy()
             new_row["URL"] = new_url
@@ -197,5 +230,5 @@ def auto_update_sources(
             new_urls.append(new_url)
         else:
             if verbose:
-                print(f"{new_url}: status {resp.status_code}, content-type {content_type}")
+                print(f"{new_url}: not valid (status: {resp_status})")
     return new_urls
