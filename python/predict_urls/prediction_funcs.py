@@ -9,7 +9,7 @@ OPD_SOURCE_TABLE = Path(__file__).parent.parent.parent / "opd_source_table.csv"
 TRACKING_TABLE = Path(__file__).parent.parent.parent / "police_data_source_tracking.csv"
 
 # Map DataType to loader class and required spreadsheet_fields
-LOADER_MAP = {
+LOADER_MAP = {  
     "arcgis": {
         "loader": Arcgis,
         "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType", "date_field"],  # date_field required if Year is MULTI
@@ -69,15 +69,18 @@ def is_data_available(data_type, url, spreadsheet_fields):
 
 def try_url_years(
     url: str,
-    years_to_try: range = None,
-    forward: bool = False,
-    n_years: int = 5,
+    n_years = 5,
+    forward: bool = None,
     year_slice: tuple = None,
     spreadsheet_fields: dict = None,
     verbose: bool = True
 ):
     """
     Try to find valid URLs by replacing a 4-digit year in the URL.
+    n_years: int or range. If int, tries n_years forward (or backward if forward=False). If range, uses as years to try.
+    forward: If n_years is int, direction to try. If None, defaults to True.
+    
+    *Assumes date fields are related to the year in the URL.
     """
     if spreadsheet_fields is None or "DataType" not in spreadsheet_fields:
         raise ValueError("spreadsheet_fields must include 'DataType' key")
@@ -95,24 +98,31 @@ def try_url_years(
         year_str = matches[0]
 
     year = int(year_str)
-    if years_to_try is None:
+
+    # Determine years_to_try
+    if isinstance(n_years, range):
+        years_to_try = n_years
+    elif isinstance(n_years, int):
+        if forward is None:
+            forward = True
         if forward:
             years_to_try = range(year + 1, year + n_years + 1)
         else:
             years_to_try = range(year - 1, year - n_years - 1, -1)
+    else:
+        raise ValueError("n_years must be an int or a range.")
 
     for y in years_to_try:
         new_url = url.replace(year_str, str(y), 1)
         try:
-            valid = is_data_available(data_type, new_url, spreadsheet_fields)
-            resp_status = "OPD loader check"
+            valid, coverage_start, coverage_end = is_data_available(data_type, new_url, spreadsheet_fields)
         except Exception as e:
             if verbose:
-                print(f"Error fetching {new_url}: {e}")
+                print(f"Error fetching {new_url}: \n {e}")
             continue
         if valid:
             if verbose:
-                print(f"Valid URL found: {new_url} (status: {resp_status})")
+                print(f"Valid URL found: {new_url}. Adding to OPD_Source_table.")
             # Prepare row for OPD_Source_table
             fields = [
                 "State", "SourceName", "Agency", "AgencyFull", "TableType",
@@ -124,6 +134,8 @@ def try_url_years(
             row["URL"] = new_url
             row["Year"] = str(y)
             row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
+            row["coverage_start"] = f"01/01/{y}"
+            row["coverage_end"] = f"12/31/{y}"
             if spreadsheet_fields:
                 for k, v in spreadsheet_fields.items():
                     if k in row:
@@ -134,12 +146,10 @@ def try_url_years(
             df.to_csv(OPD_SOURCE_TABLE, index=False)
             if verbose:
                 print(f"Added to OPD_Source_table: {new_url}")
-            return new_url
+            continue
         else:
             if verbose:
-                print(f"{new_url}: not valid (status: {resp_status})")
-    if verbose:
-        print("No valid URL found.")
+                print(f"{new_url}: not valid. Skipping.")
     return None
 
 def auto_update_sources(
