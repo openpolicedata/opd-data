@@ -12,7 +12,7 @@ TRACKING_TABLE = Path(__file__).parent.parent.parent / "police_data_source_track
 LOADER_MAP = {  
     "arcgis": {
         "loader": Arcgis,
-        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType", "date_field"],  # date_field required if Year is MULTI
+        "required_fields": ["State", "SourceName", "Agency", "AgencyFull", "TableType", "DataType"],  # date_field required if Year is MULTI, but unlikely if URL contains year 
         "constructor": lambda url, sf: (url, sf.get("date_field"), sf.get("query"))
     },
     "carto": {
@@ -115,7 +115,7 @@ def try_url_years(
     for y in years_to_try:
         new_url = url.replace(year_str, str(y), 1)
         try:
-            valid, coverage_start, coverage_end = is_data_available(data_type, new_url, spreadsheet_fields)
+            valid = is_data_available(data_type, new_url, spreadsheet_fields)
         except Exception as e:
             if verbose:
                 print(f"Error fetching {new_url}: \n {e}")
