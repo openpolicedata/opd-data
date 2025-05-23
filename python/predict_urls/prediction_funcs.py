@@ -7,6 +7,7 @@ from openpolicedata.data_loaders import Arcgis, Carto, Ckan, Csv, Excel, Html, S
 
 OPD_SOURCE_TABLE = Path(__file__).parent.parent.parent / "opd_source_table.csv"
 TRACKING_TABLE = Path(__file__).parent.parent.parent / "police_data_source_tracking.csv"
+DELETED_TABLE = Path(__file__).parent.parent.parent / "datasets_deleted_by_publisher.csv"
 
 # Map DataType to loader class and required spreadsheet_fields
 LOADER_MAP = {  
@@ -73,7 +74,7 @@ def try_url_years(
     forward: bool = None,
     year_slice: tuple = None,
     spreadsheet_fields: dict = None,
-    verbose: bool = True
+    verbose: bool = False,
 ):
     """
     Try to find valid URLs by replacing a 4-digit year in the URL.
@@ -113,43 +114,90 @@ def try_url_years(
         raise ValueError("n_years must be an int or a range.")
 
     for y in years_to_try:
+        df = pd.read_csv(OPD_SOURCE_TABLE)
+        deleted_df = pd.read_csv(DELETED_TABLE)
         new_url = url.replace(year_str, str(y), 1)
-        try:
-            valid = is_data_available(data_type, new_url, spreadsheet_fields)
-        except Exception as e:
-            if verbose:
-                print(f"Error fetching {new_url}: \n {e}")
-            continue
-        if valid:
-            if verbose:
-                print(f"Valid URL found: {new_url}. Adding to OPD_Source_table.")
-            # Prepare row for OPD_Source_table
-            fields = [
-                "State", "SourceName", "Agency", "AgencyFull", "TableType",
-                "coverage_start", "coverage_end", "last_coverage_check", "Description",
-                "source_url", "readme", "URL", "Year", "DataType", "date_field",
-                "dataset_id", "agency_field", "min_version", "query"
-            ]
-            row = {f: "" for f in fields}
-            row["URL"] = new_url
-            row["Year"] = str(y)
-            row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
-            row["coverage_start"] = f"01/01/{y}"
-            row["coverage_end"] = f"12/31/{y}"
-            if spreadsheet_fields:
-                for k, v in spreadsheet_fields.items():
-                    if k in row:
-                        row[k] = v
-            # Append to OPD_Source_table.csv
-            df = pd.read_csv(OPD_SOURCE_TABLE)
-            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-            df.to_csv(OPD_SOURCE_TABLE, index=False)
-            if verbose:
-                print(f"Added to OPD_Source_table: {new_url}")
-            continue
+         # Check if URL is already in the spreadsheet
+        in_spreadsheet = (df["URL"] == new_url).any()
+        if in_spreadsheet:
+            idx = df.index[df["URL"] == new_url][0]
+            row = df.loc[idx]
+            # Test if still valid
+            try:
+                valid = is_data_available(data_type, new_url, spreadsheet_fields)
+            except Exception as e:
+                if verbose:
+                    print(f"Error fetching {new_url}: \n {e}")
+                continue
+            if valid:
+                # Update last_coverage_check and coverage dates
+                df.at[idx, "last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
+                df.to_csv(OPD_SOURCE_TABLE, index=False)
+                if verbose:
+                    print(f"{new_url} already in spreadsheet and valid. Updated last_coverage_check.")
+                continue
+            else:
+                # Remove from spreadsheet, add to deleted
+                if verbose:
+                    print(f"{new_url} in spreadsheet but no longer valid. Removing and logging as deleted.")
+                # TODO - fix fields for deleted_table
+                removed_row = df.loc[[idx]].copy()
+                deleted_fields = [
+                    "OPD Status","State","SourceName","Agency","AgencyFull","TableType","Year","Error",
+                    "Date Outage Started","Last Outage Confirmation","Date Outage Ended","Date Last Contacted",
+                    "Contact Details","source-url","URL","dataset-id"
+                ]
+                # Prepare the deleted row
+                deleted_row = {f: "" for f in deleted_fields}
+                deleted_row["OPD Status"] = f"Deleted from OPD {datetime.now().strftime('%m/%d/%Y')}"
+                deleted_row["Error"] = "URL no longer valid via prediction_funcs test."
+                for col in deleted_fields:
+                    if col in removed_row.columns:
+                        deleted_row[col] = removed_row.iloc[0].get(col, "")
+
+                # Append to deleted_df and update files
+                deleted_df = pd.concat([deleted_df, pd.DataFrame([deleted_row])], ignore_index=True)
+                df = df.drop(idx)
+                df.to_csv(OPD_SOURCE_TABLE, index=False)
+                deleted_df.to_csv(DELETED_TABLE, index=False)
+                continue
         else:
-            if verbose:
-                print(f"{new_url}: not valid. Skipping.")
+            try:
+                valid = is_data_available(data_type, new_url, spreadsheet_fields)
+            except Exception as e:
+                if verbose:
+                    print(f"Error fetching {new_url}: \n {e}")
+                continue
+            if valid:
+                if verbose:
+                    print(f"Valid URL found: {new_url}. Adding to OPD_Source_table.")
+                # Prepare row for OPD_Source_table
+                fields = [
+                    "State", "SourceName", "Agency", "AgencyFull", "TableType",
+                    "coverage_start", "coverage_end", "last_coverage_check", "Description",
+                    "source_url", "readme", "URL", "Year", "DataType", "date_field",
+                    "dataset_id", "agency_field", "min_version", "query"
+                ]
+                row = {f: "" for f in fields}
+                row["URL"] = new_url
+                row["Year"] = str(y)
+                row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
+                row["coverage_start"] = f"01/01/{y}"
+                row["coverage_end"] = f"12/31/{y}"
+                if spreadsheet_fields:
+                    for k, v in spreadsheet_fields.items():
+                        if k in row:
+                            row[k] = v
+                # Append to OPD_Source_table.csv
+                df = pd.read_csv(OPD_SOURCE_TABLE)
+                df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+                df.to_csv(OPD_SOURCE_TABLE, index=False)
+                if verbose:
+                    print(f"Added to OPD_Source_table: {new_url}")
+                continue
+            else:
+                if verbose:
+                    print(f"{new_url}: not valid. Skipping.")
     return None
 
 def auto_update_sources(
