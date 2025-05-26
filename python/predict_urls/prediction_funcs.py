@@ -6,7 +6,6 @@ from pathlib import Path
 from openpolicedata.data_loaders import Arcgis, Carto, Ckan, Csv, Excel, Html, Socrata
 
 OPD_SOURCE_TABLE = Path(__file__).parent.parent.parent / "opd_source_table.csv"
-TRACKING_TABLE = Path(__file__).parent.parent.parent / "police_data_source_tracking.csv"
 DELETED_TABLE = Path(__file__).parent.parent.parent / "datasets_deleted_by_publisher.csv"
 
 # Map DataType to loader class and required spreadsheet_fields
@@ -201,10 +200,8 @@ def try_url_years(
     return None
 
 def auto_update_sources(
-    source_table_path=OPD_SOURCE_TABLE,
-    tracking_table_path=TRACKING_TABLE,
     outdated_days=30,
-    verbose=True
+    verbose=False
 ):
     """
     Automatically check for new data by incrementing year in URLs for testable sources.
@@ -218,36 +215,26 @@ def auto_update_sources(
         list: List of new URLs added.
     """
     # 1. Load tables
-    df = pd.read_csv(source_table_path)
-    tracking = pd.read_csv(tracking_table_path)
+    df = pd.read_csv(OPD_SOURCE_TABLE)
     # 2. Filter by DataType (use all testable types in LOADER_MAP)
     testable_types = list(LOADER_MAP.keys())
     df = df[df["DataType"].str.lower().isin([t.lower() for t in testable_types])]
     # 3. Filter URLs with exactly one 4-digit year
     df = df[df["URL"].str.contains(r"\d{4}", regex=True)]
     df = df[df["URL"].str.count(r"\d{4}") == 1]
-    # 4. Check last checked date
-    columns_to_match = ['State', 'SourceName', 'AgencyFull', 'TableType']
-    outdated = []
-    for idx, row in df.iterrows():
-        # Find matching tracking row
-        mask = (tracking[columns_to_match] == row[columns_to_match]).all(axis=1)
-        last_checked = None
-        if mask.any():
-            last_checked = tracking.loc[mask, "last_coverage_check"].values[0]
-        if last_checked:
-            try:
-                last_checked_dt = pd.to_datetime(last_checked)
-            except Exception:
-                last_checked_dt = datetime.min
-        else:
-            last_checked_dt = datetime.min
-        if (datetime.now() - last_checked_dt).days >= outdated_days:
-            outdated.append(idx)
-    if not outdated:
-        if verbose:
-            print("No outdated sources found.")
-        return []
+    # 4. Group by composite key and get max last checked date
+    composite_key = ['State', 'SourceName', 'AgencyFull', 'TableType']
+    max_df = df.loc[df.groupby(composite_key)["last_coverage_check"].idxmax()]
+    # 5. Check for outdated sources 
+    # Parse last_coverage_check as datetime
+    max_df["last_coverage_check_dt"] = pd.to_datetime(max_df["last_coverage_check"], errors="coerce")
+    last_year = datetime.now().year - 1
+    # Keep rows where last_coverage_check is before Jan 1 of this year
+    to_test = max_df[max_df["last_coverage_check_dt"].dt.year <= last_year]
+   
+   
+    ## STOPPED HERE TODO
+    # 6. Test URLs for 
     new_urls = []
     for idx in outdated:
         row = df.loc[idx]
