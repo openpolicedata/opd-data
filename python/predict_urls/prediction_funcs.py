@@ -67,6 +67,18 @@ def is_data_available(data_type, url, spreadsheet_fields):
     except Exception as e:
         return False
 
+def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields):
+    """
+    Returns (is_valid, new_url, coverage_start, coverage_end)
+    """
+    new_url = url.replace(year_str, str(year), 1)
+    try:
+        valid = is_data_available(data_type, new_url, spreadsheet_fields)
+    except Exception as e:
+        valid = False
+    return valid, new_url
+
+##TODO - add limit so it never tests past current year
 def try_url_years(
     url: str,
     n_years = 5,
@@ -111,23 +123,20 @@ def try_url_years(
             years_to_try = range(year - 1, year - n_years - 1, -1)
     else:
         raise ValueError("n_years must be an int or a range.")
-
+    
+    df = pd.read_csv(OPD_SOURCE_TABLE)
+    deleted_df = pd.read_csv(DELETED_TABLE)
+    current_year = datetime.now().year    
+    
     for y in years_to_try:
-        df = pd.read_csv(OPD_SOURCE_TABLE)
-        deleted_df = pd.read_csv(DELETED_TABLE)
         new_url = url.replace(year_str, str(y), 1)
-         # Check if URL is already in the spreadsheet
+        # Check if URL is already in the spreadsheet
         in_spreadsheet = (df["URL"] == new_url).any()
         if in_spreadsheet:
             idx = df.index[df["URL"] == new_url][0]
             row = df.loc[idx]
             # Test if still valid
-            try:
-                valid = is_data_available(data_type, new_url, spreadsheet_fields)
-            except Exception as e:
-                if verbose:
-                    print(f"Error fetching {new_url}: \n {e}")
-                continue
+            valid, _ = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
             if valid:
                 # Update last_coverage_check and coverage dates
                 df.at[idx, "last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
@@ -139,7 +148,7 @@ def try_url_years(
                 # Remove from spreadsheet, add to deleted
                 if verbose:
                     print(f"{new_url} in spreadsheet but no longer valid. Removing and logging as deleted.")
-                # TODO - fix fields for deleted_table
+                # TODO - fix fields for deleted_table... *days later* I don't remember what I meant here.
                 removed_row = df.loc[[idx]].copy()
                 deleted_fields = [
                     "OPD Status","State","SourceName","Agency","AgencyFull","TableType","Year","Error",
@@ -161,12 +170,7 @@ def try_url_years(
                 deleted_df.to_csv(DELETED_TABLE, index=False)
                 continue
         else:
-            try:
-                valid = is_data_available(data_type, new_url, spreadsheet_fields)
-            except Exception as e:
-                if verbose:
-                    print(f"Error fetching {new_url}: \n {e}")
-                continue
+            valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
             if valid:
                 if verbose:
                     print(f"Valid URL found: {new_url}. Adding to OPD_Source_table.")
@@ -182,7 +186,10 @@ def try_url_years(
                 row["Year"] = str(y)
                 row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
                 row["coverage_start"] = f"01/01/{y}"
-                row["coverage_end"] = f"12/31/{y}"
+                if y == current_year:
+                    row["coverage_end"] = datetime.now().strftime("%m/%d/%Y")
+                else:
+                    row["coverage_end"] = f"12/31/{y}"
                 if spreadsheet_fields:
                     for k, v in spreadsheet_fields.items():
                         if k in row:
@@ -200,80 +207,67 @@ def try_url_years(
     return None
 
 def auto_update_sources(
-    outdated_days=30,
+    outdated_days=365,
     verbose=False
 ):
     """
     Automatically check for new data by incrementing year in URLs for testable sources.
 
     Args:
-        source_table_path (str or Path): Path to OPD_Source_table.csv.
-        tracking_table_path (str or Path): Path to police_data_source_tracking.csv.
         outdated_days (int): How many days before a source is considered outdated.
         verbose (bool): Print progress and results.
     Returns:
         list: List of new URLs added.
     """
-    # 1. Load tables
+    # 1. Load table and parse last_coverage_check as datetime
     df = pd.read_csv(OPD_SOURCE_TABLE)
-    # 2. Filter by DataType (use all testable types in LOADER_MAP)
-    testable_types = list(LOADER_MAP.keys())
-    df = df[df["DataType"].str.lower().isin([t.lower() for t in testable_types])]
-    # 3. Filter URLs with exactly one 4-digit year
-    df = df[df["URL"].str.contains(r"\d{4}", regex=True)]
-    df = df[df["URL"].str.count(r"\d{4}") == 1]
-    # 4. Group by composite key and get max last checked date
+    df["last_coverage_check_dt"] = pd.to_datetime(df["last_coverage_check"], errors="coerce")
+    # 2. Group by composite key and get max last checked date
     composite_key = ['State', 'SourceName', 'AgencyFull', 'TableType']
-    max_df = df.loc[df.groupby(composite_key)["last_coverage_check"].idxmax()]
-    # 5. Check for outdated sources 
-    # Parse last_coverage_check as datetime
-    max_df["last_coverage_check_dt"] = pd.to_datetime(max_df["last_coverage_check"], errors="coerce")
-    last_year = datetime.now().year - 1
-    # Keep rows where last_coverage_check is before Jan 1 of this year
-    to_test = max_df[max_df["last_coverage_check_dt"].dt.year <= last_year]
-   
-   
-    ## STOPPED HERE TODO
-    # 6. Test URLs for 
-    new_urls = []
-    for idx in outdated:
-        row = df.loc[idx]
-        url = row["URL"]
-        data_type = row["DataType"].lower()
+    max_df = df.loc[df.groupby(composite_key)["Year"].idxmax()]
+    # 3. Filter URLs with exactly one 4-digit year
+    max_df = max_df[max_df["URL"].str.contains(r"\d{4}", regex=True)]
+    max_df = max_df[max_df["URL"].str.count(r"\d{4}") == 1]
+    # Keep rows where last_coverage_check_dt is NaT or older than outdated_days
+    current_date = datetime.now()
+    if outdated_days is not None:
+        cutoff_date = current_date - pd.Timedelta(days=outdated_days)
+        to_test = max_df[max_df["last_coverage_check_dt"] <= cutoff_date]
+    else:
+        last_year = current_date.year - 1
+        to_test = max_df[max_df["last_coverage_check_dt"].dt.year <= last_year]
+    to_test = to_test.drop(columns=["last_coverage_check_dt"])
+    # 6. For each outdated row, try to find new URLs by incrementing year using try_url_years
+    current_year = datetime.now().year
+    for row in to_test.itertuples(index=False):
+        url = row.URL
+        data_type = row.DataType.lower()
         year_match = re.search(r"\d{4}", url)
         if not year_match:
             continue
         year_str = year_match.group()
         year = int(year_str)
-        # Try next year
-        new_year = year + 1
-        new_url = url.replace(year_str, str(new_year), 1)
-        # Prepare spreadsheet_fields/extra_fields for loader
-        spreadsheet_fields = row.to_dict()
-        spreadsheet_fields["Year"] = str(new_year)
-        spreadsheet_fields["URL"] = new_url
-        try:
-            valid = is_data_available(data_type, new_url, spreadsheet_fields)
-            resp_status = "OPD loader check"
-        except Exception as e:
-            if verbose:
-                print(f"Error fetching {new_url}: {e}")
-            continue
-        if valid:
-            if verbose:
-                print(f"Valid new URL found: {new_url} (status: {resp_status})")
-            # Add to OPD_Source_table
-            new_row = row.copy()
-            new_row["URL"] = new_url
-            new_row["Year"] = str(new_year)
-            new_row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
-            opd_df = pd.read_csv(source_table_path)
-            opd_df = pd.concat([opd_df, pd.DataFrame([new_row])], ignore_index=True)
-            opd_df.to_csv(source_table_path, index=False)
-            if verbose:
-                print(f"Added to OPD_Source_table: {new_url}")
-            new_urls.append(new_url)
-        else:
-            if verbose:
-                print(f"{new_url}: not valid (status: {resp_status})")
-    return new_urls
+        spreadsheet_fields = row._asdict()
+        # year_slice = (year_match.start(), year_match.end())
+        if year < current_year:
+            for y in range(year + 1, current_year + 1):
+                valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
+                if valid:
+                    # Update DataFrame directly, no need to check if already present
+                    new_row = spreadsheet_fields.copy()
+                    new_row["URL"] = new_url
+                    new_row["Year"] = str(y)
+                    new_row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
+                    new_row["coverage_start"] = f"01/01/{y}"
+                    if y == current_year:
+                        new_row["coverage_end"] = datetime.now().strftime("%m/%d/%Y")
+                    else:
+                        new_row["coverage_end"] = f"12/31/{y}"
+                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                    df.to_csv(OPD_SOURCE_TABLE, index=False)
+                    if verbose:
+                        print(f"Added to OPD_Source_table: {new_url}") 
+                else:
+                    if verbose:
+                        print(f"{new_url}: not valid. Skipping.")
+    return print(f"Updated {len(to_test)} sources with new URLs.") if verbose else None
