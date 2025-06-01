@@ -80,18 +80,24 @@ def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields):
 
 def try_url_years(
     url: str,
+    spreadsheet_fields: dict,
     n_years = 5,
     forward: bool = None,
     year_slice: tuple = None,
-    spreadsheet_fields: dict = None,
-    verbose: bool = False,
+    verbose: bool = False
 ):
     """
     Try to find valid URLs by replacing a 4-digit year in the URL.
+    Args:
+    url: str. The URL to modify.
+    spreadsheet_fields: dict with fields to use for checking validity and adding to OPD_Source_table.
     n_years: int or range. If int, tries n_years forward (or backward if forward=False). If range, uses as years to try.
     forward: If n_years is int, direction to try. If None, defaults to True.
+    year_slice: tuple of (start, end) to slice the URL for the year. If None, finds the first 4-digit year in the URL.
+    verbose: If True, prints progress messages.
     
-    *Assumes date fields are related to the year in the URL.
+    Attempts to find valid URLs by incrementing or decrementing the year in the URL and checking if the resulting URL is valid.
+    Updates OPD_SOURCE_TABLE and DELETED_TABLE as appropriate.
     """
     if spreadsheet_fields is None or "DataType" not in spreadsheet_fields:
         raise ValueError("spreadsheet_fields must include 'DataType' key")
@@ -148,7 +154,6 @@ def try_url_years(
                 # Remove from spreadsheet, add to deleted
                 if verbose:
                     print(f"{new_url} in spreadsheet but no longer valid. Removing and logging as deleted.")
-                # TODO - fix fields for deleted_table... *days later* I don't remember what I meant here.
                 removed_row = df.loc[[idx]].copy()
                 deleted_fields = [
                     "OPD Status","State","SourceName","Agency","AgencyFull","TableType","Year","Error",
