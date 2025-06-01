@@ -180,7 +180,7 @@ def get_stanford():
         
         if is_multi:
             source_name = state
-            jurisdiction = "MULTI"
+            jurisdiction = "MULTIPLE"
         else:
             source_name = pd_name
             jurisdiction = pd_name

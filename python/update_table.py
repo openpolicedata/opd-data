@@ -49,19 +49,11 @@ def update_dates(kstart=0):
     df = opd.datasets.query()
     df_stanford = stanford.get_stanford()
 
-    df_stanford.loc[df_stanford['agency']=='MULTI', 'agency'] = opd.defs.MULTI
-
     downloadable_file = "Downloadable File"
     data_type_to_access_type = {"Socrata":"API", "ArcGIS":"API","CSV":downloadable_file,"Excel":downloadable_file,"Carto":"API",
-                                'CKAN':'API'}
-
-    if "coverage_start" not in df:
-        df["coverage_start"] = pd.NaT
-        df["coverage_end"] = pd.NaT
-        df["last_coverage_check"] = pd.NaT
+                                'CKAN':'API','Opendatasoft':'API'}
 
     df["date_field"] = df["date_field"].apply(lambda x: x.strip() if isinstance(x,str) else x)
-    df["SourceName"] = df["SourceName"].str.replace("Police Department", "").str.strip()
 
     # Reorder columns so columns most useful to user are up front
     start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end",
@@ -70,8 +62,8 @@ def update_dates(kstart=0):
     cols.extend([x for x in df.columns if x not in start_cols])
     df = df[cols]
 
-    df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='ignore')
-    df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='ignore')
+    df['coverage_start'] = pd.to_datetime(df['coverage_start'])
+    df['coverage_end'] = pd.to_datetime(df['coverage_end'])
 
     sort_cols = cols.copy()
     sort_cols.remove('dataset_id')
@@ -111,14 +103,20 @@ def update_dates(kstart=0):
                 continue
             elif cur_row["Year"] == opd.defs.MULTI:
                 # Manually get years since get years gets years for all datasets
-                loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], cur_row['query'], 
-                                        dataset=cur_row["dataset_id"],
-                                        date_field=cur_row["date_field"], agency_field=cur_row["agency_field"])
+                try:
+                    loader = src._Source__get_loader(opd.defs.DataType(cur_row["DataType"]), cur_row["URL"], cur_row['query'], 
+                                            dataset=cur_row["dataset_id"],
+                                            date_field=cur_row["date_field"], agency_field=cur_row["agency_field"])
+                except opd.exceptions.OPD_DataUnavailableError:
+                    continue
                 
                 if cur_row['DataType'] in ["Excel",'CSV']:
                     years = [opd.defs.MULTI]
                 else:
-                    years = loader.get_years()
+                    try:
+                        years = loader.get_years()
+                    except (opd.exceptions.OPD_SocrataHTTPError, opd.exceptions.OPD_DataUnavailableError):
+                        continue
                     years.sort()
                     years = [x for x in years if x >= min_year]
 
@@ -131,23 +129,27 @@ def update_dates(kstart=0):
                 # For if case, assuming 1st year might be a mistake
                 years_req = years[:2] if len(years)>1 and years[1]-years[0]>5 else years[0]
 
+                if nrows==1:
+                    assert pd.notnull(cur_row["date_field"])
+
                 table = src.load(year=years_req, table_type=cur_row["TableType"], nrows=nrows, url=cur_row['URL'], id=cur_row['dataset_id'],
                                  sortby='date')
                 if len(table.table)==0:
                     raise ValueError("No records found in first year")
                 
-                if pd.notnull(cur_row["date_field"]) or 'DATE' in table.table.columns:
-                    min_val = table.table[cur_row["date_field"]].min()
+                if pd.notnull(cur_row["date_field"]):
+                    date_field = cur_row["date_field"]
+                    min_val = table.table[date_field].min()
                     if isinstance(min_val, pd.Timestamp) and min_val.year<2000 and len(table.table)>1 and \
-                        table.table[cur_row["date_field"]].nsmallest(2).iloc[1].year - min_val.year > 5:
-                        min_val = table.table[cur_row["date_field"]].nsmallest(2).iloc[1]
+                        table.table[date_field].nsmallest(2).iloc[1].year - min_val.year > 5:
+                        min_val = table.table[date_field].nsmallest(2).iloc[1]
                     if not isinstance(min_val, str):
                         min_val = min_val.strftime('%m/%d/%Y')
                     coverage_start = min_val
 
-                    table = src.load(year=years[-1], table_type=cur_row["TableType"], url=cur_row['URL'], id=cur_row['dataset_id'])
-                    table.standardize()
-                    date_field = 'DATE' if 'DATE' in table.table else cur_row['date_field']
+                    if years!=[opd.defs.MULTI]:
+                        table = src.load(year=years[-1], table_type=cur_row["TableType"], url=cur_row['URL'], id=cur_row['dataset_id'])
+
                     col = table.table[date_field][table.table[date_field].apply(lambda x: not isinstance(x,str))]
                     if len(col)==0:
                         col = pd.to_datetime(table.table[date_field])
@@ -166,13 +168,23 @@ def update_dates(kstart=0):
                     if len(dt_col)>1:
                         raise NotImplementedError()
                     elif len(dt_col)==0:
-                        continue
+                        dt_col = [x for x in table.table.columns if "year" in x.lower()]
+                        if len(dt_col)>1:
+                            raise NotImplementedError()
+                        elif len(dt_col)==0:
+                            continue
+                        else:
+                            dt_col = dt_col[0]
+                            min_year = table.table[dt_col].min()
+                            max_year = table.table[dt_col].max()
+                            coverage_start = "01/01/{}".format(min_year)
+                            coverage_end = "12/31/{}".format(max_year)
                     else:
                         dt_col = dt_col[0]
                         if isinstance(table.table[dt_col],str):
                             raise NotImplementedError()
                         else:
-                            table.table[dt_col] = pd.to_datetime(table.table[dt_col])
+                            table.table[dt_col] = pd.to_datetime(table.table[dt_col], format='mixed')
                             min_val = table.table[dt_col].min()
                             if not isinstance(min_val, str):
                                 min_val = min_val.strftime('%m/%d/%Y')
@@ -605,9 +617,9 @@ def update_ripa(url, dict_url, year):
 
 
         
-# update_dates(kstart=1296)
+update_dates(kstart=941)
 # count_agencies()
 
-update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA-Stop-Data-2023.zip',
-            'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA%20Dataset%20Read%20Me%202023%20Final.pdf',
-            2023)
+# update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA-Stop-Data-2023.zip',
+#             'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA%20Dataset%20Read%20Me%202023%20Final.pdf',
+#             2023)
