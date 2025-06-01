@@ -78,7 +78,6 @@ def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields):
         valid = False
     return valid, new_url
 
-##TODO - add limit so it never tests past current year
 def try_url_years(
     url: str,
     n_years = 5,
@@ -112,15 +111,16 @@ def try_url_years(
     year = int(year_str)
 
     # Determine years_to_try
+    current_year = datetime.now().year
     if isinstance(n_years, range):
-        years_to_try = n_years
+        years_to_try = [y for y in n_years if y <= current_year]
     elif isinstance(n_years, int):
         if forward is None:
             forward = True
         if forward:
-            years_to_try = range(year + 1, year + n_years + 1)
+            years_to_try = [y for y in range(year + 1, year + n_years + 1) if y <= current_year]
         else:
-            years_to_try = range(year - 1, year - n_years - 1, -1)
+            years_to_try = [y for y in range(year - 1, year - n_years - 1, -1) if y <= current_year]
     else:
         raise ValueError("n_years must be an int or a range.")
     
@@ -207,17 +207,15 @@ def try_url_years(
     return None
 
 def auto_update_sources(
-    outdated_days=365,
+    outdated_days=None,
     verbose=False
 ):
     """
-    Automatically check for new data by incrementing year in URLs for testable sources.
+    Automatically check for new data by incrementing year in URLs for testable sources. Adds valid URLs to OPD_Source_table.csv.
 
     Args:
         outdated_days (int): How many days before a source is considered outdated.
-        verbose (bool): Print progress and results.
-    Returns:
-        list: List of new URLs added.
+        verbose (bool): Print progress.
     """
     # 1. Load table and parse last_coverage_check as datetime
     df = pd.read_csv(OPD_SOURCE_TABLE)
@@ -239,6 +237,7 @@ def auto_update_sources(
     to_test = to_test.drop(columns=["last_coverage_check_dt"])
     # 6. For each outdated row, try to find new URLs by incrementing year using try_url_years
     current_year = datetime.now().year
+    count = 0
     for row in to_test.itertuples(index=False):
         url = row.URL
         data_type = row.DataType.lower()
@@ -248,12 +247,10 @@ def auto_update_sources(
         year_str = year_match.group()
         year = int(year_str)
         spreadsheet_fields = row._asdict()
-        # year_slice = (year_match.start(), year_match.end())
         if year < current_year:
             for y in range(year + 1, current_year + 1):
                 valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
                 if valid:
-                    # Update DataFrame directly, no need to check if already present
                     new_row = spreadsheet_fields.copy()
                     new_row["URL"] = new_url
                     new_row["Year"] = str(y)
@@ -263,11 +260,13 @@ def auto_update_sources(
                         new_row["coverage_end"] = datetime.now().strftime("%m/%d/%Y")
                     else:
                         new_row["coverage_end"] = f"12/31/{y}"
+                    df = pd.read_csv(OPD_SOURCE_TABLE)
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     df.to_csv(OPD_SOURCE_TABLE, index=False)
+                    count += 1
                     if verbose:
                         print(f"Added to OPD_Source_table: {new_url}") 
                 else:
                     if verbose:
                         print(f"{new_url}: not valid. Skipping.")
-    return print(f"Updated {len(to_test)} sources with new URLs.") if verbose else None
+    return print(f"Checked {len(to_test)} sources for new URLs, found {count} new sources.")
