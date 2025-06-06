@@ -131,7 +131,7 @@ def try_url_years(
         raise ValueError("n_years must be an int or a range.")
     
     df = pd.read_csv(OPD_SOURCE_TABLE)
-    deleted_df = pd.read_csv(DELETED_TABLE)
+    # deleted_df = pd.read_csv(DELETED_TABLE)
     current_year = datetime.now().year    
     
     for y in years_to_try:
@@ -139,41 +139,44 @@ def try_url_years(
         # Check if URL is already in the spreadsheet
         in_spreadsheet = (df["URL"] == new_url).any()
         if in_spreadsheet:
-            idx = df.index[df["URL"] == new_url][0]
-            row = df.loc[idx]
-            # Test if still valid
-            valid, _ = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
-            if valid:
-                # Update last_coverage_check and coverage dates
-                df.at[idx, "last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
-                df.to_csv(OPD_SOURCE_TABLE, index=False)
-                if verbose:
-                    print(f"{new_url} already in spreadsheet and valid. Updated last_coverage_check.")
-                continue
-            else:
-                # Remove from spreadsheet, add to deleted
-                if verbose:
-                    print(f"{new_url} in spreadsheet but no longer valid. Removing and logging as deleted.")
-                removed_row = df.loc[[idx]].copy()
-                deleted_fields = [
-                    "OPD Status","State","SourceName","Agency","AgencyFull","TableType","Year","Error",
-                    "Date Outage Started","Last Outage Confirmation","Date Outage Ended","Date Last Contacted",
-                    "Contact Details","source-url","URL","dataset-id"
-                ]
-                # Prepare the deleted row
-                deleted_row = {f: "" for f in deleted_fields}
-                deleted_row["OPD Status"] = f"Deleted from OPD {datetime.now().strftime('%m/%d/%Y')}"
-                deleted_row["Error"] = "URL no longer valid via prediction_funcs test."
-                for col in deleted_fields:
-                    if col in removed_row.columns:
-                        deleted_row[col] = removed_row.iloc[0].get(col, "")
+            if verbose:
+                print(f"{new_url} already in spreadsheet. Skipping.")
+            continue
+            # idx = df.index[df["URL"] == new_url][0]
+            # row = df.loc[idx]
+            # # Test if still valid
+            # valid, _ = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
+            # if valid:
+            #     # Update last_coverage_check and coverage dates
+            #     df.at[idx, "last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
+            #     df.to_csv(OPD_SOURCE_TABLE, index=False)
+            #     if verbose:
+            #         print(f"{new_url} already in spreadsheet and valid. Updated last_coverage_check.")
+            #     continue
+            # else:
+            #     # Remove from spreadsheet, add to deleted
+            #     if verbose:
+            #         print(f"{new_url} in spreadsheet but no longer valid. Removing and logging as deleted.")
+            #     removed_row = df.loc[[idx]].copy()
+            #     deleted_fields = [
+            #         "OPD Status","State","SourceName","Agency","AgencyFull","TableType","Year","Error",
+            #         "Date Outage Started","Last Outage Confirmation","Date Outage Ended","Date Last Contacted",
+            #         "Contact Details","source-url","URL","dataset-id"
+            #     ]
+            #     # Prepare the deleted row
+            #     deleted_row = {f: "" for f in deleted_fields}
+            #     deleted_row["OPD Status"] = f"Deleted from OPD {datetime.now().strftime('%m/%d/%Y')}"
+            #     deleted_row["Error"] = "URL no longer valid via prediction_funcs test."
+            #     for col in deleted_fields:
+            #         if col in removed_row.columns:
+            #             deleted_row[col] = removed_row.iloc[0].get(col, "")
 
-                # Append to deleted_df and update files
-                deleted_df = pd.concat([deleted_df, pd.DataFrame([deleted_row])], ignore_index=True)
-                df = df.drop(idx)
-                df.to_csv(OPD_SOURCE_TABLE, index=False)
-                deleted_df.to_csv(DELETED_TABLE, index=False)
-                continue
+            #     # Append to deleted_df and update files
+            #     deleted_df = pd.concat([deleted_df, pd.DataFrame([deleted_row])], ignore_index=True)
+            #     df = df.drop(idx)
+            #     df.to_csv(OPD_SOURCE_TABLE, index=False)
+            #     deleted_df.to_csv(DELETED_TABLE, index=False)
+            #     continue
         else:
             valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
             if valid:
