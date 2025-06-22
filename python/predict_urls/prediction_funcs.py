@@ -71,7 +71,7 @@ def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields):
     """
     Returns (is_valid, new_url, coverage_start, coverage_end)
     """
-    new_url = url.replace(year_str, str(year), 1)
+    new_url = url.replace(year_str, str(year))
     try:
         valid = is_data_available(data_type, new_url, spreadsheet_fields)
     except Exception as e:
