@@ -265,6 +265,8 @@ def auto_update_sources(
                     new_row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
                     new_row["coverage_start"] = f"01/01/{y}"
                     new_row["coverage_end"] = f"12/31/{y}"
+                    new_row["source_url"] = ""
+                    
                     df = pd.read_csv(OPD_SOURCE_TABLE)
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     # Reorder columns so columns most useful to user are up front
