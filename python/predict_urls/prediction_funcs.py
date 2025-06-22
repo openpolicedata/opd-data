@@ -278,8 +278,13 @@ def auto_update_sources(
                     df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='coerce')
 
                     sort_cols = cols.copy()
-                    sort_cols.remove('dataset_id')
+                    if 'dataset_id' in sort_cols:
+                        sort_cols.remove('dataset_id')
                     df = df.sort_values(by=sort_cols)
+
+                    # Convert back to MM/DD/YYYY string format before saving
+                    df['coverage_start'] = df['coverage_start'].dt.strftime('%m/%d/%Y')
+                    df['coverage_end'] = df['coverage_end'].dt.strftime('%m/%d/%Y')
                     df.to_csv(OPD_SOURCE_TABLE, index=False)
                     count += 1
                     if verbose:
