@@ -62,7 +62,7 @@ def is_data_available(data_type, url, spreadsheet_fields):
     try:
         args = loader_info["constructor"](url, spreadsheet_fields)
         loader = loader_info["loader"](*args)
-        count = loader.get_count()
+        count = loader.get_count(force=True)
         return count > 0
     except Exception as e:
         return False
