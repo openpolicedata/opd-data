@@ -267,6 +267,19 @@ def auto_update_sources(
                     new_row["coverage_end"] = f"12/31/{y}"
                     df = pd.read_csv(OPD_SOURCE_TABLE)
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                    # Reorder columns so columns most useful to user are up front
+                    start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end",
+                                "last_coverage_check",'Year','agency_originated','supplying_entity',"Description","source_url","readme","URL"]
+                    cols = start_cols.copy()
+                    cols.extend([x for x in df.columns if x not in start_cols])
+                    df = df[cols]
+
+                    df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='ignore')
+                    df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='ignore')
+
+                    sort_cols = cols.copy()
+                    sort_cols.remove('dataset_id')
+                    df = df.sort_values(by=sort_cols)
                     df.to_csv(OPD_SOURCE_TABLE, index=False)
                     count += 1
                     if verbose:
