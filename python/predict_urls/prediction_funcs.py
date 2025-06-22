@@ -274,8 +274,8 @@ def auto_update_sources(
                     cols.extend([x for x in df.columns if x not in start_cols])
                     df = df[cols]
 
-                    df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='ignore')
-                    df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='ignore')
+                    df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='coerce')
+                    df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='coerce')
 
                     sort_cols = cols.copy()
                     sort_cols.remove('dataset_id')
