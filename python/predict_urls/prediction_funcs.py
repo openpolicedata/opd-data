@@ -264,10 +264,7 @@ def auto_update_sources(
                     new_row["Year"] = str(y)
                     new_row["last_coverage_check"] = datetime.now().strftime("%m/%d/%Y")
                     new_row["coverage_start"] = f"01/01/{y}"
-                    if y == current_year:
-                        new_row["coverage_end"] = datetime.now().strftime("%m/%d/%Y")
-                    else:
-                        new_row["coverage_end"] = f"12/31/{y}"
+                    new_row["coverage_end"] = f"12/31/{y}"
                     df = pd.read_csv(OPD_SOURCE_TABLE)
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     df.to_csv(OPD_SOURCE_TABLE, index=False)
