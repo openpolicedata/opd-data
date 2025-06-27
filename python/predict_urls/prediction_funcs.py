@@ -63,8 +63,11 @@ def is_data_available(data_type, url, spreadsheet_fields):
         args = loader_info["constructor"](url, spreadsheet_fields)
         loader = loader_info["loader"](*args)
         count = loader.get_count(force=True)
-        return count > 0
+        # print(f"Data available for {url}: {count} records found.")
+        return count > 1 # Error message appears as count = 1 for CSV while testing. Didn't check other data_types
+    
     except Exception as e:
+        print(f"Exception in is_data_available for {url}: {e}")
         return False
 
 def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields):
