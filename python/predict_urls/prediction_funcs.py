@@ -2,11 +2,16 @@ import re
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+import requests
+import urllib
 
+from openpolicedata.exceptions import OPD_DataUnavailableError
 from openpolicedata.data_loaders import Arcgis, Carto, Ckan, Csv, Excel, Html, Socrata
 
 OPD_SOURCE_TABLE = Path(__file__).parent.parent.parent / "opd_source_table.csv"
 DELETED_TABLE = Path(__file__).parent.parent.parent / "datasets_deleted_by_publisher.csv"
+
+# TODO: Check what happens with  Winooski, and Norman data
 
 # Map DataType to loader class and required spreadsheet_fields
 LOADER_MAP = {  
@@ -47,11 +52,16 @@ LOADER_MAP = {
     }
 }
 
-def is_data_available(data_type, url, spreadsheet_fields):
+def is_data_available(data_type, url, spreadsheet_fields, verbose=True):
     """
     Returns True if the endpoint is available and has at least one record.
     Returns False if not available, not accessible, or has no data.
     """
+
+    if re.search(r'/DocumentCenter/View/\d+/', url):
+        # This type of URL seems to return a file even if the specified filename after the string above is wrong
+        return False
+
     loader_info = LOADER_MAP.get(data_type.lower())
     if not loader_info:
         raise ValueError(f"Unsupported DataType: {data_type}")
@@ -59,26 +69,36 @@ def is_data_available(data_type, url, spreadsheet_fields):
     for field in loader_info["required_fields"]:
         if field not in spreadsheet_fields or (spreadsheet_fields[field] in [None, ""] and field != "date_field"):
             raise ValueError(f"Missing required field '{field}' for DataType '{data_type}'")
+        
+    args = loader_info["constructor"](url, spreadsheet_fields)
     try:
-        args = loader_info["constructor"](url, spreadsheet_fields)
         loader = loader_info["loader"](*args)
+    except Exception as e:
+        if not any(isinstance(e, x) for x in [OPD_DataUnavailableError, requests.exceptions.HTTPError, urllib.error.URLError]):
+            print(f"Failed for data type {data_type} and URL {url}")
+        return False
+    try:
         count = loader.get_count(force=True)
         # print(f"Data available for {url}: {count} records found.")
         return count > 1 # Error message appears as count = 1 for CSV while testing. Didn't check other data_types
     
     except Exception as e:
-        print(f"Exception in is_data_available for {url}: {e}")
+        if verbose:
+            print(f"Exception in is_data_available for {url}: {e}")
         return False
 
-def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields):
+def find_valid_url_for_year(url, year, year_str, data_type, spreadsheet_fields, verbose=True):
     """
     Returns (is_valid, new_url, coverage_start, coverage_end)
     """
     new_url = url.replace(year_str, str(year))
-    try:
-        valid = is_data_available(data_type, new_url, spreadsheet_fields)
-    except Exception as e:
+    if new_url==url:
         valid = False
+    else:
+        try:
+            valid = is_data_available(data_type, new_url, spreadsheet_fields, verbose)
+        except Exception as e:
+            valid = False
     return valid, new_url
 
 def try_url_years(
@@ -181,7 +201,7 @@ def try_url_years(
             #     deleted_df.to_csv(DELETED_TABLE, index=False)
             #     continue
         else:
-            valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
+            valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields, verbose)
             if valid:
                 if verbose:
                     print(f"Valid URL found: {new_url}. Adding to OPD_Source_table.")
@@ -219,7 +239,8 @@ def try_url_years(
 
 def auto_update_sources(
     outdated_days=None,
-    verbose=False
+    verbose=False,
+    source_name=None
 ):
     """
     Automatically check for new data by incrementing year in URLs for testable sources. Adds valid URLs to OPD_Source_table.csv.
@@ -227,40 +248,54 @@ def auto_update_sources(
     Args:
         outdated_days (int): How many days before a source is considered outdated.
         verbose (bool): Print progress.
+        source_name (str): Name of source to run (all will be run by default)
     """
-    # 1. Load table and parse last_coverage_check as datetime
+
+    current_date = datetime.now()
+    current_year = current_date.year
+
+    # Load table and parse datetimes
     df = pd.read_csv(OPD_SOURCE_TABLE)
     df["last_coverage_check_dt"] = pd.to_datetime(df["last_coverage_check"], errors="coerce")
-    # 2. Group by composite key and get max last checked date
-    composite_key = ['State', 'SourceName', 'AgencyFull', 'TableType']
-    max_df = df.loc[df.groupby(composite_key)["Year"].idxmax()]
+    df["coverage_end_dt"] = pd.to_datetime(df["coverage_end"], errors="coerce")
+    df['Year'] = df['Year'].apply(lambda x: int(x) if pd.notnull(x) and x.isdigit() else x)
+
+    # Remove data
+    df = df[df['supplying_entity'].isnull()]
+    df = df[~df['Year'].isin(['MULTIPLE','NONE'])]
+    if source_name:
+        df = df[df['SourceName']==source_name]
+
+    # Group by composite key and only keep most recent dataset
+    composite_key = ['State', 'SourceName', 'Agency', 'TableType']
+    max_df = df.loc[df.groupby(composite_key)["coverage_end_dt"].idxmax()]
+    max_df = max_df[max_df['Year']!=current_year]
+
     # 3. Filter URLs with exactly one 4-digit year
-    max_df = max_df[max_df["URL"].str.contains(r"\d{4}", regex=True)]
-    max_df = max_df[max_df["URL"].str.count(r"\d{4}") == 1]
+    max_df = max_df[max_df["URL"].str.contains(r"20\d{2}", regex=True)]
+
     # Keep rows where last_coverage_check_dt is NaT or older than outdated_days
-    current_date = datetime.now()
+    to_test = max_df.copy()
     if outdated_days is not None:
         cutoff_date = current_date - pd.Timedelta(days=outdated_days)
-        to_test = max_df[max_df["last_coverage_check_dt"] <= cutoff_date]
-    else:
-        last_year = current_date.year - 1
-        to_test = max_df[max_df["last_coverage_check_dt"].dt.year <= last_year]
-    to_test = to_test.drop(columns=["last_coverage_check_dt"])
+        to_test = to_test[to_test["last_coverage_check_dt"] <= cutoff_date]
+        
+    to_test = to_test.drop(columns=["last_coverage_check_dt", 'coverage_end_dt'])
     # 6. For each outdated row, try to find new URLs by incrementing year using try_url_years
-    current_year = datetime.now().year
     count = 0
     for row in to_test.itertuples(index=False):
         url = row.URL
         data_type = row.DataType.lower()
-        year_match = re.search(r"\d{4}", url)
-        if not year_match:
+        year_match = re.findall(r"20\d{2}", url)
+        if len(year_match)==0:
             continue
-        year_str = year_match.group()
+        # Assuming minimum year is correct
+        year_str = min(year_match)
         year = int(year_str)
         spreadsheet_fields = row._asdict()
         if year < current_year:
             for y in range(year + 1, current_year + 1):
-                valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields)
+                valid, new_url = find_valid_url_for_year(url, y, year_str, data_type, spreadsheet_fields, verbose)
                 if valid:
                     new_row = spreadsheet_fields.copy()
                     new_row["URL"] = new_url
@@ -275,14 +310,12 @@ def auto_update_sources(
                     # Reorder columns so columns most useful to user are up front
                     start_cols = ["State","SourceName","Agency","AgencyFull","TableType","coverage_start","coverage_end",
                                 "last_coverage_check",'Year','agency_originated','supplying_entity',"Description","source_url","readme","URL"]
-                    cols = start_cols.copy()
-                    cols.extend([x for x in df.columns if x not in start_cols])
-                    df = df[cols]
+                    sort_cols = start_cols.copy()
+                    sort_cols.extend([x for x in df.columns if x not in start_cols])
 
                     df['coverage_start'] = pd.to_datetime(df['coverage_start'], errors='coerce')
                     df['coverage_end'] = pd.to_datetime(df['coverage_end'], errors='coerce')
 
-                    sort_cols = cols.copy()
                     if 'dataset_id' in sort_cols:
                         sort_cols.remove('dataset_id')
                     df = df.sort_values(by=sort_cols)
@@ -298,3 +331,6 @@ def auto_update_sources(
                     if verbose:
                         print(f"{new_url}: not valid. Skipping.")
     return print(f"Checked {len(to_test)} sources for new URLs, found {count} new sources.")
+
+if __name__ == "__main__":
+    auto_update_sources(verbose=True)
