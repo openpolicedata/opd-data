@@ -542,9 +542,13 @@ def update_ripa(url, dict_url, year):
     with opd.httpio.open(url, block_size=2**20) as fp:
         with ZipFile(fp, 'r') as z:
             for name in z.namelist():
+                if name.endswith('/'):
+                    # Folder name
+                    continue
+
                 new_entry = base.copy()
 
-                m = re.search(rf'Data\s\_\s(?P<loc>[\w\s]+)\s{year}\sQ?(?P<Q>\d)?', name)
+                m = re.search(rf'Data\s?\_\s?(?P<loc>[\w\s]+)\s{year}\s?Q?(?P<Q>\d)?', name)
                 assert m
 
                 if m.group('Q')!=None:
@@ -617,9 +621,9 @@ def update_ripa(url, dict_url, year):
 
 
         
-update_dates(kstart=941)
+# update_dates(kstart=941)
 # count_agencies()
 
-# update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA-Stop-Data-2023.zip',
-#             'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-12/RIPA%20Dataset%20Read%20Me%202023%20Final.pdf',
-#             2023)
+update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-12/ripa-stop-data-2024.zip',
+            'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-12/ripa-stop-dataset-readme-2024.pdf',
+            2024)
