@@ -132,8 +132,11 @@ def update_dates(kstart=0):
                 if nrows==1:
                     assert pd.notnull(cur_row["date_field"])
 
-                table = src.load(year=years_req, table_type=cur_row["TableType"], nrows=nrows, url=cur_row['URL'], id=cur_row['dataset_id'],
-                                 sortby='date')
+                try:
+                    table = src.load(year=years_req, table_type=cur_row["TableType"], nrows=nrows, url=cur_row['URL'], id=cur_row['dataset_id'],
+                                    sortby='date')
+                except opd.exceptions.OPD_MinVersionError:
+                    continue
                 if len(table.table)==0:
                     raise ValueError("No records found in first year")
                 
@@ -556,7 +559,10 @@ def update_ripa(url, dict_url, year):
                         assert m.group('loc') not in q1_data
                         q1_data.append(m.group('loc'))
 
-                        new_entry['dataset_id'] = json.dumps({'files': [name.replace(' Q1 ', f' Q{x} ') for x in range(1,5)]})
+                        qfiles = [re.sub(r'([\s_])Q1([\s_])',rf'\1Q{x}\2', name) for x in range(1,5)]
+                        assert len(set(qfiles))==4
+                        assert all(x in z.namelist() for x in qfiles)
+                        new_entry['dataset_id'] = json.dumps({'files': qfiles})
                     else:
                         assert m.group('loc') in q1_data
                         continue
@@ -621,9 +627,9 @@ def update_ripa(url, dict_url, year):
 
 
         
-# update_dates(kstart=941)
+update_dates(kstart=0)
 # count_agencies()
 
-update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-12/ripa-stop-data-2024.zip',
-            'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-12/ripa-stop-dataset-readme-2024.pdf',
-            2024)
+# update_ripa('https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-12/ripa-stop-data-2024.zip',
+#             'https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-12/ripa-stop-dataset-readme-2024.pdf',
+#             2024)
