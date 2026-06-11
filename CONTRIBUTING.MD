@@ -162,6 +162,7 @@ Add a row with as much of the following information as you can. Some columns may
 * **coverage_start** (Required): Earliest date available in the dataset
 * **coverage_end** (Required): Most recent date available in the dataset
 * **last_coverage_check**: The date that you recorded coverage_start and coverage_end. Some datasets are updated periodically so it is valuable to know when someone last checked the coverage.
+* **source_table_id**: Stable unique ID for this row in the OPD Source Table. This value is generated from the row's `State`, `SourceName`, `Agency`, `TableType`, `Year`, `URL`, and `dataset_id` fields. After adding or editing source table rows, run `python python/generate_source_table_ids.py` from the repository root to refresh IDs.
 * **Description**: Description of the dataset. You can often use text from the dataset's website.
 * **source_url**: This is the main website (or landing page for the dataset). Try out the links for other datasets for examples.
 * **readme**: Link to website or downloadable file containing readme (i.e. descriptions of fields and/or data values) information for a dataset
