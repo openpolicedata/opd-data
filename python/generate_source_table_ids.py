@@ -114,6 +114,7 @@ def main() -> int:
             raise ValueError(
                 f"{SOURCE_TABLE_ID} is stale on row(s): "
                 + ", ".join(str(row_number) for row_number in stale_rows[:20])
+                + f".\n\nFirst mis-matched row is\n{current[stale_rows[0]-2]} \n vs \n {rows[stale_rows[0]-2]}"
             )
 
         return 0
